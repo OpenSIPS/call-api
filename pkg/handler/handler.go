@@ -18,15 +18,18 @@ package handler
 import (
 	"errors"
 	"reflect"
+	"github.com/OpenSIPS/opensips-calling-api/pkg/mi"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/connection"
 )
 
 type Handler struct {
 	conn *connection.Connection
+	mi mi.MI
 }
 
 func New(conn *connection.Connection) (h *Handler) {
 	h = new(Handler)
+	h.mi = mi.MIHandler()
 	h.conn = conn
 	return
 }

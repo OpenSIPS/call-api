@@ -16,38 +16,109 @@
 package mi
 
 import (
-	"io"
-	"log"
+	"net"
+	"time"
+	"sync"
+	"bufio"
 	"errors"
-	"net/rpc"
-	"github.com/powerman/rpc-codec/jsonrpc2"
-
+	"encoding/json"
 )
 
 type MIDatagram struct {
-	conn *jsonrpc2.Client
+	conn *net.UDPConn
+	buffer []byte
+	reader *bufio.Reader
+	idLock sync.Mutex
+	id     uint64
+}
+
+type miRequest struct {
+	JSONRPC string                 `json:"jsonrpc"`
+	ID      uint64                 `json:"id"`
+	Method  string                 `json:"method"`
+	Params  map[string]interface{} `json:"params,omitempty"`
+}
+
+type miError struct {
+	Code    int                     `json:"code"`
+	Message string                  `json:"message"`
+	Data    interface{}             `json:"data,omitempty"`
+}
+
+type miResponse struct {
+	JSONRPC string                 `json:"jsonrpc"`
+	ID      uint64                 `json:"id"`
+	Result  map[string]interface{} `json:"result,omitempty"`
+	Error   *miError               `json:"error,omitempty"`
 }
 
 func (mi *MIDatagram) Connect(url string) error {
-	/* TODO: make a wiser detection here when/if we have multiple backends */
-	conn, err := jsonrpc2.Dial("udp", url)
+
+	addr, err := net.ResolveUDPAddr("udp", url)
 	if err != nil {
-		return errors.New("cannot connect to udp:" + url)
+		return err
 	}
+	conn, err := net.DialUDP("udp", nil, addr)
+	if err != nil {
+		return err
+	}
+	conn.SetReadBuffer(65535)
+	conn.SetWriteBuffer(65535)
+	mi.buffer = make([]byte, 65535)
 	mi.conn = conn
+	mi.reader = bufio.NewReader(conn)
 	return nil
 }
 
 func (mi *MIDatagram) Call(command string, param interface{}) (map[string]interface{}, error) {
-	var reply map[string]interface{}
 
-	err := mi.conn.Call(command, param, &reply)
-	log.Printf("returned")
-	if err == rpc.ErrShutdown || err == io.ErrUnexpectedEOF {
-		return nil, errors.New("Connection error")
-	} else if err != nil {
-		rpcerr := jsonrpc2.ServerError(err)
-		return nil, errors.New(rpcerr.Message)
+	var reply miResponse
+
+	mi.idLock.Lock()
+	currentId := mi.id
+	mi.id += 1
+	mi.idLock.Unlock()
+
+	js := struct {
+		Method  string           `json:"method"`
+		Params  interface{}      `json:"params,omitempty"`
+		JSONRPC string           `json:"jsonrpc"`
+		ID      uint64           `json:"id"`
+	}{
+		Method:  command,
+		Params:  param,
+		JSONRPC: "2.0",
+		ID:      currentId,
 	}
-	return reply, nil
+	jb, err := json.Marshal(js)
+	if err != nil {
+		return nil, err
+	}
+	/* writing the request */
+	mi.conn.SetWriteDeadline(time.Now().Add(time.Second))
+	_, err = mi.conn.Write(jb)
+	if err != nil {
+		return nil, err
+	}
+
+	/* waiting for the reply */
+	r, err := mi.reader.Read(mi.buffer)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(mi.buffer[0:r], &reply)
+	if err != nil {
+		return nil, err
+	}
+
+	if reply.ID != currentId {
+		return nil, errors.New("id mismatch")
+	}
+
+	if reply.Error != nil {
+		return nil, errors.New(reply.Error.Message)
+	}
+	result := reply.Result
+	return result, nil
 }

@@ -17,6 +17,7 @@ package mi
 
 import (
 	"io"
+	"log"
 	"errors"
 	"net/rpc"
 	"github.com/powerman/rpc-codec/jsonrpc2"
@@ -37,10 +38,11 @@ func (mi *MIDatagram) Connect(url string) error {
 	return nil
 }
 
-func (mi *MIDatagram) Call(command string, params interface{}) (map[string]interface{}, error) {
+func (mi *MIDatagram) Call(command string, param interface{}) (map[string]interface{}, error) {
 	var reply map[string]interface{}
 
-	err := mi.conn.Call(command, params, &reply)
+	err := mi.conn.Call(command, param, &reply)
+	log.Printf("returned")
 	if err == rpc.ErrShutdown || err == io.ErrUnexpectedEOF {
 		return nil, errors.New("Connection error")
 	} else if err != nil {

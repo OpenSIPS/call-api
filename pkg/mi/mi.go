@@ -30,7 +30,7 @@ type MI interface {
 func MIHandler() (*MIDatagram) {
 	mi := new(MIDatagram)
 	if err := mi.Connect(url); err != nil {
-		log.Printf("ERR: %v", err)
+		log.Printf("ERROR connecting: %v", err)
 		return nil
 	}
 	return mi

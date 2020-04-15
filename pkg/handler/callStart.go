@@ -40,9 +40,6 @@ func (h *Handler) CallStart(params map[string]string) (string, error) {
 	const referHeadersFormat = "Referred-By: %s\r\n" +
 		"Refer-To:: <%s>\r\n"
 
-	if len(params) < 2 {
-		return "", errors.New("caller and/or callee not specified")
-	}
 	caller, ok := params["caller"]
 	if ok != true {
 		return "", errors.New("caller not specified")
@@ -113,12 +110,12 @@ func (h *Handler) CallStart(params map[string]string) (string, error) {
 
 	ret, err = h.mi.Call("t_uac_dlg", &referParams)
 	if err != nil {
-		return "", err
+		return callid, err
 	}
 
 	status, ok = ret["Status"].(string)
 	if ok != true {
-		return "", errors.New("invalid returned status type")
+		return callid, errors.New("invalid returned status type")
 	}
 
 	status = strings.Split(status, " ")[0]
@@ -132,7 +129,7 @@ func (h *Handler) CallStart(params map[string]string) (string, error) {
 	h.mi.Call("t_uac_dlg", &byeParams)
 
 	if status != "202" {
-		return "", errors.New("could not redirect call " + callid)
+		return callid, errors.New("could not redirect call " + callid)
 	} else {
 		return callid, nil
 	}

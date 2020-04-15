@@ -48,7 +48,7 @@ type miError struct {
 type miResponse struct {
 	JSONRPC string                 `json:"jsonrpc"`
 	ID      uint64                 `json:"id"`
-	Result  map[string]interface{} `json:"result,omitempty"`
+	Result  interface{}            `json:"result,omitempty"`
 	Error   *miError               `json:"error,omitempty"`
 }
 
@@ -119,6 +119,9 @@ func (mi *MIDatagram) Call(command string, param interface{}) (map[string]interf
 	if reply.Error != nil {
 		return nil, errors.New(reply.Error.Message)
 	}
-	result := reply.Result
-	return result, nil
+	if result, ok := reply.Result.(map[string]interface{}); ok {
+		return result, nil
+	} else {
+		return nil, nil
+	}
 }

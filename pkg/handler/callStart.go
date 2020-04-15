@@ -16,10 +16,10 @@
 package handler
 
 import (
-	"log"
 	"fmt"
 	"errors"
 	"strings"
+	"strconv"
 )
 
 func (h *Handler) CallStart(params []string) (string, error) {
@@ -36,6 +36,9 @@ func (h *Handler) CallStart(params []string) (string, error) {
 		"t=0 0\r\n" +
 		"m=audio 9 RTP/AVP 0\r\n" +
 		"a=rtpmap:0 PCMU/8000\r\n"
+
+	const referHeadersFormat = "Referred-By: %s\r\n" +
+		"Refer-To:: <%s>\r\n"
 
 	if len(params) < 2 {
 		return "", errors.New("caller and/or callee not specified")
@@ -56,8 +59,8 @@ func (h *Handler) CallStart(params []string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	status, stringType := ret["Status"].(string)
-	if stringType != true {
+	status, ok := ret["Status"].(string)
+	if ok != true {
 		return "", errors.New("invalid returned status type")
 	}
 
@@ -65,7 +68,67 @@ func (h *Handler) CallStart(params []string) (string, error) {
 		return "", errors.New(status)
 	}
 
-	// all good now, first call has been answered
-	log.Printf("status: %v", status)
-	return "call successfully started", nil
+	ruri, ok := ret["RURI"].(string)
+	if ok != true {
+		return "", errors.New("invalid RURI returned")
+	}
+
+	message, ok := ret["Message"].(string)
+	if ok != true {
+		return "", errors.New("invalid Message returned")
+	}
+
+	headers = ""
+	cseq := 1
+	callid := ""
+	for _, header := range strings.Split(message, "\r\n") {
+		switch strings.Split(header, ":")[0] {
+		case "CSeq":
+			cseqInt, err := strconv.Atoi(strings.Split(header, " ")[1])
+			if err == nil {
+				cseq = cseqInt
+			}
+		case "Call-ID":
+			callid = strings.TrimSpace(strings.Split(header, ":")[1])
+			fallthrough
+		case "From", "To", "Routes":
+			headers += header + "\r\n"
+		}
+	}
+
+	referHeaders := headers + "CSeq: " + strconv.Itoa(cseq + 1) + " REFER\r\n" +
+					fmt.Sprintf(referHeadersFormat, caller, callee)
+	var referParams = map[string]string{
+		"method": "REFER",
+		"ruri": ruri,
+		"headers": referHeaders,
+	}
+
+
+	ret, err = h.mi.Call("t_uac_dlg", &referParams)
+	if err != nil {
+		return "", err
+	}
+
+	status, ok = ret["Status"].(string)
+	if ok != true {
+		return "", errors.New("invalid returned status type")
+	}
+
+	status = strings.Split(status, " ")[0]
+
+	byeHeaders := headers + "CSeq: " + strconv.Itoa(cseq + 2) + " BYE\r\n"
+	var byeParams = map[string]string{
+		"method": "BYE",
+		"ruri": ruri,
+		"headers": byeHeaders,
+	}
+	h.mi.Call("t_uac_dlg", &byeParams)
+
+
+	if status != "202" {
+		return "", errors.New("could not redirect call " + callid)
+	} else {
+		return "call successfully started call " + callid, nil
+	}
 }

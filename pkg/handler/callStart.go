@@ -22,7 +22,7 @@ import (
 	"strconv"
 )
 
-func (h *Handler) CallStart(params []string) (string, error) {
+func (h *Handler) CallStart(params map[string]string) (string, error) {
 
 	const headersFormat = "From: <%s>\r\n" +
 		"To: <%s>\r\n" +
@@ -43,8 +43,14 @@ func (h *Handler) CallStart(params []string) (string, error) {
 	if len(params) < 2 {
 		return "", errors.New("caller and/or callee not specified")
 	}
-	caller := params[0]
-	callee := params[1]
+	caller, ok := params["caller"]
+	if ok != true {
+		return "", errors.New("caller not specified")
+	}
+	callee, ok := params["callee"]
+	if ok != true {
+		return "", errors.New("callee not specified")
+	}
 
 	headers := fmt.Sprintf(headersFormat, caller, callee, caller)
 
@@ -125,10 +131,9 @@ func (h *Handler) CallStart(params []string) (string, error) {
 	}
 	h.mi.Call("t_uac_dlg", &byeParams)
 
-
 	if status != "202" {
 		return "", errors.New("could not redirect call " + callid)
 	} else {
-		return "call successfully started call " + callid, nil
+		return callid, nil
 	}
 }

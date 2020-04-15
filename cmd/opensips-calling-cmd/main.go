@@ -18,6 +18,7 @@ package main
 import (
 	"os"
 	"log"
+	"strings"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/handler"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/connection"
 )
@@ -48,8 +49,12 @@ func main() {
 		usage(os.Args[0])
 	}
 	command := os.Args[1]
-	arguments := os.Args[2:]
 	var conn connection.Connection = new(CmdConnection)
 	h := handler.New(&conn)
+	var arguments = map[string]string{}
+	for _, arg := range os.Args[2:] {
+		param := strings.Split(arg, "=")
+		arguments[param[0]] = strings.Join(param[1:], "=")
+	}
 	h.Run(command, arguments)
 }

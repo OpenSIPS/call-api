@@ -34,14 +34,14 @@ func New(conn *connection.Connection) (h *Handler) {
 	return
 }
 
-func (h *Handler) Run(command string, args []string) {
+func (h *Handler) Run(command string, params map[string]string) {
 
 	f := reflect.ValueOf(h).MethodByName(command)
 	if !f.IsValid() {
 		(*h.conn).Error(errors.New(command + " not implemented"))
 		return
 	}
-	in := []reflect.Value{reflect.ValueOf(args)}
+	in := []reflect.Value{reflect.ValueOf(params)}
 	ret := f.Call(in)
 
 	if !ret[1].IsNil() {

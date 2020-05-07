@@ -70,6 +70,10 @@ func (mi *MIDatagram) Connect(url string) error {
 	return nil
 }
 
+func (mi *MIDatagram) Addr() (net.Addr) {
+	return mi.conn.RemoteAddr()
+}
+
 func (mi *MIDatagram) Call(command string, param interface{}) (map[string]interface{}, error) {
 
 	var reply miResponse

@@ -13,27 +13,23 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
-package mi
+package event
 
 import (
 	"log"
-	"net"
+	"github.com/OpenSIPS/opensips-calling-api/pkg/mi"
 )
 
-var url string = "127.0.0.1:8080"
-
-type MI interface {
-	Addr() (net.Addr)
-	Connect(url string) (error)
-	Call(command string, params interface{}) (map[string]interface{}, error)
+type Event interface {
+	Connect(mi.MI) (error)
+	Socket() (string)
 }
 
-/* TODO: make a wiser detection here when/if we have multiple backends */
-func MIHandler() (*MIDatagram) {
-	mi := new(MIDatagram)
-	if err := mi.Connect(url); err != nil {
-		log.Printf("ERROR connecting: %v", err)
+func EventHandler(mi mi.MI) (*EventDatagram) {
+	event := new(EventDatagram)
+	if err := event.Connect(mi); err != nil {
+		log.Printf("ERROR creating: %v", err)
 		return nil
 	}
-	return mi
+	return event
 }

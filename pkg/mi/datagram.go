@@ -19,7 +19,6 @@ import (
 	"net"
 	"time"
 	"sync"
-	"bufio"
 	"errors"
 	"encoding/json"
 )
@@ -27,9 +26,9 @@ import (
 type MIDatagram struct {
 	conn *net.UDPConn
 	buffer []byte
-	reader *bufio.Reader
 	idLock sync.Mutex
 	id     uint64
+	done   chan error
 }
 
 type miRequest struct {
@@ -66,7 +65,7 @@ func (mi *MIDatagram) Connect(url string) error {
 	conn.SetWriteBuffer(65535)
 	mi.buffer = make([]byte, 65535)
 	mi.conn = conn
-	mi.reader = bufio.NewReader(conn)
+	mi.done = make(chan error, 1)
 	return nil
 }
 
@@ -74,9 +73,44 @@ func (mi *MIDatagram) Addr() (net.Addr) {
 	return mi.conn.RemoteAddr()
 }
 
-func (mi *MIDatagram) Call(command string, param interface{}) (map[string]interface{}, error) {
+func (mi *MIDatagram) getReply(currentId uint64, fn MIreply, params interface{}) {
 
 	var reply miResponse
+
+	r, _,  err := mi.conn.ReadFrom(mi.buffer)
+	if err != nil {
+		mi.done <- err
+		return
+	}
+
+	err = json.Unmarshal(mi.buffer[0:r], &reply)
+	if err != nil {
+		mi.done <- err
+		return
+	}
+
+	if reply.ID != currentId {
+		mi.done <- errors.New("id mismatch")
+		return
+	}
+
+	if reply.Error != nil {
+		mi.done <- errors.New(reply.Error.Message)
+		return
+	}
+	if result, ok := reply.Result.(map[string]interface{}); ok {
+		fn(result, params)
+	} else {
+		fn(nil, params)
+	}
+	mi.done <- nil
+}
+
+func (mi *MIDatagram) Wait() (error) {
+	return <- mi.done
+}
+
+func (mi *MIDatagram) Call(command string, params interface{}, fn MIreply, fnp interface{}) (error) {
 
 	mi.idLock.Lock()
 	currentId := mi.id
@@ -90,42 +124,28 @@ func (mi *MIDatagram) Call(command string, param interface{}) (map[string]interf
 		ID      uint64           `json:"id"`
 	}{
 		Method:  command,
-		Params:  param,
+		Params:  params,
 		JSONRPC: "2.0",
 		ID:      currentId,
 	}
 	jb, err := json.Marshal(js)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	/* writing the request */
 	mi.conn.SetWriteDeadline(time.Now().Add(time.Second))
 	_, err = mi.conn.Write(jb)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	/* waiting for the reply */
-	r, err := mi.reader.Read(mi.buffer)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(mi.buffer[0:r], &reply)
-	if err != nil {
-		return nil, err
-	}
-
-	if reply.ID != currentId {
-		return nil, errors.New("id mismatch")
-	}
-
-	if reply.Error != nil {
-		return nil, errors.New(reply.Error.Message)
-	}
-	if result, ok := reply.Result.(map[string]interface{}); ok {
-		return result, nil
-	} else {
-		return nil, nil
-	}
+	go mi.getReply(currentId, fn, fnp)
+	return nil
 }
+
+/*
+func (mi *MIDatagram) CallSync(command string, param interface{}) (map[string]interface{}, error) {
+	return nil, nil
+}
+*/

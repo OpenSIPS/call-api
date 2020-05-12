@@ -17,6 +17,5 @@ package connection
 
 type Connection interface {
 	Report(report string)
-	Error(err error)
 	Close()
 }

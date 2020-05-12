@@ -20,12 +20,16 @@ import (
 	"net"
 )
 
+type MIreply func(result map[string]interface{}, param interface{})
+
 var url string = "127.0.0.1:8080"
 
 type MI interface {
 	Addr() (net.Addr)
 	Connect(url string) (error)
-	Call(command string, params interface{}) (map[string]interface{}, error)
+	Wait() (error)
+	Call(command string, params interface{}, fn MIreply, fnp interface{}) (error)
+//	CallSync(command string, params interface{}) (map[string]interface{}, error)
 }
 
 /* TODO: make a wiser detection here when/if we have multiple backends */

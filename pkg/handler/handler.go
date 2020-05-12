@@ -27,6 +27,7 @@ type Handler struct {
 	conn *connection.Connection
 	mi mi.MI
 	ev event.Event
+	done chan error
 }
 
 func New(conn *connection.Connection) (h *Handler) {
@@ -34,25 +35,32 @@ func New(conn *connection.Connection) (h *Handler) {
 	h.mi = mi.MIHandler()
 	h.ev = event.EventHandler(h.mi)
 	h.conn = conn
-	return
+	h.done = make(chan error, 1)
+	return h
 }
 
-func (h *Handler) Run(command string, params map[string]string) {
-
+func (h *Handler) Run(command string, params map[string]string) (error) {
 	f := reflect.ValueOf(h).MethodByName(command)
 	if !f.IsValid() {
-		(*h.conn).Error(errors.New(command + " not implemented"))
-		return
+		return errors.New(command + " not implemented")
 	}
 	in := []reflect.Value{reflect.ValueOf(params)}
-	ret := f.Call(in)
+	go f.Call(in)
+	return nil
+}
 
-	if !ret[1].IsNil() {
-		var err error = ret[1].Interface().(error)
-		(*h.conn).Error(err)
-		return
+func (h *Handler) Wait() (error) {
+
+	return <- h.done
+}
+
+func (h *Handler) RunSync(command string, params map[string]string) (error) {
+
+	err := h.Run(command, params)
+	if err != nil {
+		return err
 	}
-	(*h.conn).Report(ret[0].String())
+	return h.Wait()
 }
 
 func (h *Handler) Report(report string) {

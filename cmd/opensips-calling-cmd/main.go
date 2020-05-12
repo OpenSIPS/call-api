@@ -31,10 +31,6 @@ func (conn *CmdConnection) Report(report string) {
 	log.Print(report)
 }
 
-func (conn *CmdConnection) Error(err error) {
-	log.Printf("ERR: %v", err)
-}
-
 func (conn *CmdConnection) Close() {
 }
 
@@ -56,5 +52,11 @@ func main() {
 		param := strings.Split(arg, "=")
 		arguments[param[0]] = strings.Join(param[1:], "=")
 	}
-	h.Run(command, arguments)
+	err := h.Run(command, arguments)
+	if err == nil {
+		err = h.Wait()
+	}
+	if err != nil {
+		log.Printf("ERR: %v", err)
+	}
 }

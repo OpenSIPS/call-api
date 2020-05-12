@@ -19,15 +19,71 @@ import (
 	"fmt"
 	"errors"
 	"strings"
-	"strconv"
+//	"strconv"
+	"github.com/google/uuid"
 )
 
-func (h *Handler) CallStart(params map[string]string) (string, error) {
+type callCoords struct {
+	callid, caller, callee string
+}
+
+func (h *Handler) callTransfer(result map[string]interface{}, param interface{}) {
+
+	var ok bool
+	var coords callCoords
+
+	if coords, ok = param.(callCoords); !ok {
+		h.done <- errors.New("invalid parameter passed at callback")
+		return
+	}
+	h.Report("call " + coords.callid + " has been transfered to " + coords.callee)
+
+	h.done <- nil
+}
+
+func (h *Handler) initialCallStart(result map[string]interface{}, param interface{}) {
+
+	var ok bool
+	var coords callCoords
+
+	if coords, ok = param.(callCoords); !ok {
+		h.done <- errors.New("invalid parameter passed at callback")
+		return
+	}
+
+	status, ok := result["Status"].(string)
+	if ok != true {
+		h.done <- errors.New("invalid returned status type")
+		return
+	}
+
+	if strings.Split(status, " ")[0] != "200" {
+		h.done <- errors.New("failed to establish initial call: " + status)
+		return
+	}
+
+	h.Report("call " + coords.callid + " answered by " + coords.caller)
+
+	var transferParams = map[string]string{
+		"callid": coords.callid,
+		"leg": "callee",
+		"destination": coords.callee,
+	}
+
+	err := h.mi.Call("call_transfer", &transferParams, h.callTransfer, coords)
+	if err != nil {
+		h.done <- err
+		return
+	}
+}
+
+func (h *Handler) CallStart(params map[string]string) {
 
 	const headersFormat = "From: <%s>\r\n" +
 		"To: <%s>\r\n" +
 		"Contact: <%s>\r\n" +
-		"Content-Type: application/sdp\r\n"
+		"Content-Type: application/sdp\r\n" +
+		"Call-Id: %s\r\n"
 
 	const inviteBody = "v=0\r\n" +
 		"o=click-to-dial 0 0 IN IP4 0.0.0.0\r\n" +
@@ -37,19 +93,20 @@ func (h *Handler) CallStart(params map[string]string) (string, error) {
 		"m=audio 9 RTP/AVP 0\r\n" +
 		"a=rtpmap:0 PCMU/8000\r\n"
 
-	const referHeadersFormat = "Referred-By: %s\r\n" +
-		"Refer-To:: <%s>\r\n"
+	callid := uuid.New().String()
 
 	caller, ok := params["caller"]
 	if ok != true {
-		return "", errors.New("caller not specified")
+		h.done <- errors.New("caller not specified")
+		return
 	}
 	callee, ok := params["callee"]
 	if ok != true {
-		return "", errors.New("callee not specified")
+		h.done <- errors.New("callee not specified")
+		return
 	}
 
-	headers := fmt.Sprintf(headersFormat, caller, callee, caller)
+	headers := fmt.Sprintf(headersFormat, caller, callee, caller, callid)
 
 	var inviteParams = map[string]string{
 		"method": "INVITE",
@@ -58,79 +115,15 @@ func (h *Handler) CallStart(params map[string]string) (string, error) {
 		"body": inviteBody,
 	}
 
-	ret, err := h.mi.Call("t_uac_dlg", &inviteParams)
+	coords := callCoords{
+		callid: callid,
+		caller: caller,
+		callee: callee,
+	}
+
+	err := h.mi.Call("t_uac_dlg", &inviteParams, h.initialCallStart, coords)
 	if err != nil {
-		return "", err
-	}
-	status, ok := ret["Status"].(string)
-	if ok != true {
-		return "", errors.New("invalid returned status type")
-	}
-
-	if strings.Split(status, " ")[0] != "200" {
-		return "", errors.New(status)
-	}
-
-	ruri, ok := ret["RURI"].(string)
-	if ok != true {
-		return "", errors.New("invalid RURI returned")
-	}
-
-	message, ok := ret["Message"].(string)
-	if ok != true {
-		return "", errors.New("invalid Message returned")
-	}
-
-	headers = ""
-	cseq := 1
-	callid := ""
-	for _, header := range strings.Split(message, "\r\n") {
-		switch strings.Split(header, ":")[0] {
-		case "CSeq":
-			cseqInt, err := strconv.Atoi(strings.Split(header, " ")[1])
-			if err == nil {
-				cseq = cseqInt
-			}
-		case "Call-ID":
-			callid = strings.TrimSpace(strings.Split(header, ":")[1])
-			fallthrough
-		case "From", "To", "Routes":
-			headers += header + "\r\n"
-		}
-	}
-
-	referHeaders := headers + "CSeq: " + strconv.Itoa(cseq + 1) + " REFER\r\n" +
-					fmt.Sprintf(referHeadersFormat, caller, callee)
-	var referParams = map[string]string{
-		"method": "REFER",
-		"ruri": ruri,
-		"headers": referHeaders,
-	}
-
-
-	ret, err = h.mi.Call("t_uac_dlg", &referParams)
-	if err != nil {
-		return callid, err
-	}
-
-	status, ok = ret["Status"].(string)
-	if ok != true {
-		return callid, errors.New("invalid returned status type")
-	}
-
-	status = strings.Split(status, " ")[0]
-
-	byeHeaders := headers + "CSeq: " + strconv.Itoa(cseq + 2) + " BYE\r\n"
-	var byeParams = map[string]string{
-		"method": "BYE",
-		"ruri": ruri,
-		"headers": byeHeaders,
-	}
-	h.mi.Call("t_uac_dlg", &byeParams)
-
-	if status != "202" {
-		return callid, errors.New("could not redirect call " + callid)
-	} else {
-		return callid, nil
+		h.done <- err
+		return
 	}
 }

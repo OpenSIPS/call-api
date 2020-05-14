@@ -25,9 +25,19 @@ import (
 
 type callCoords struct {
 	callid, caller, callee string
+	ruri, dlginfo string
 }
 
-func (h *Handler) callTransfer(result map[string]interface{}, param interface{}) {
+func (h *Handler) callStartEnd(coords callCoords) {
+	var byeParams = map[string]string{
+		"method": "BYE",
+		"ruri": coords.ruri,
+		"headers": coords.dlginfo + "CSeq: 3 BYE\r\n", /* guessing the cseq */
+	}
+	h.mi.Call("t_uac_dlg", &byeParams, nil, nil)
+}
+
+func (h *Handler) callStartTransfer(result map[string]interface{}, param interface{}) {
 
 	var ok bool
 	var coords callCoords
@@ -36,12 +46,15 @@ func (h *Handler) callTransfer(result map[string]interface{}, param interface{})
 		h.done <- errors.New("invalid parameter passed at callback")
 		return
 	}
+
+	/* XXX: report 2 - call transferred */
 	h.Report("call " + coords.callid + " has been transfered to " + coords.callee)
+	h.callStartEnd(coords)
 
 	h.done <- nil
 }
 
-func (h *Handler) initialCallStart(result map[string]interface{}, param interface{}) {
+func (h *Handler) callStartInitial(result map[string]interface{}, param interface{}) {
 
 	var ok bool
 	var coords callCoords
@@ -62,6 +75,27 @@ func (h *Handler) initialCallStart(result map[string]interface{}, param interfac
 		return
 	}
 
+	coords.ruri, ok = result["RURI"].(string)
+	if ok != true {
+		h.done <- errors.New("invalid RURI returned")
+		return
+	}
+
+	message, ok := result["Message"].(string)
+	if ok != true {
+		h.done <- errors.New("invalid Message returned")
+		return
+	}
+
+	/* gather information about the dialog, so we can close it later */
+	for _, header := range strings.Split(message, "\r\n") {
+		switch strings.Split(header, ":")[0] {
+		case "From", "To", "Routes", "Call-ID", "Call-Id":
+			coords.dlginfo += header + "\r\n"
+		}
+	}
+
+	/* XXX: report 1 - call answered */
 	h.Report("call " + coords.callid + " answered by " + coords.caller)
 
 	var transferParams = map[string]string{
@@ -70,7 +104,7 @@ func (h *Handler) initialCallStart(result map[string]interface{}, param interfac
 		"destination": coords.callee,
 	}
 
-	err := h.mi.Call("call_transfer", &transferParams, h.callTransfer, coords)
+	err := h.mi.Call("call_transfer", &transferParams, h.callStartTransfer, coords)
 	if err != nil {
 		h.done <- err
 		return
@@ -83,6 +117,7 @@ func (h *Handler) CallStart(params map[string]string) {
 		"To: <%s>\r\n" +
 		"Contact: <%s>\r\n" +
 		"Content-Type: application/sdp\r\n" +
+		"CSeq: 1 INVITE\r\n" +
 		"Call-Id: %s\r\n"
 
 	const inviteBody = "v=0\r\n" +
@@ -119,9 +154,11 @@ func (h *Handler) CallStart(params map[string]string) {
 		callid: callid,
 		caller: caller,
 		callee: callee,
+		ruri: caller,
+		dlginfo: "",
 	}
 
-	err := h.mi.Call("t_uac_dlg", &inviteParams, h.initialCallStart, coords)
+	err := h.mi.Call("t_uac_dlg", &inviteParams, h.callStartInitial, coords)
 	if err != nil {
 		h.done <- err
 		return

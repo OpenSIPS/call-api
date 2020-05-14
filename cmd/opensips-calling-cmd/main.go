@@ -20,7 +20,7 @@ import (
 	"log"
 	"strings"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/handler"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/connection"
+	"github.com/OpenSIPS/opensips-calling-api/pkg/server"
 )
 
 /* used to simulate the Communication interface */
@@ -45,7 +45,7 @@ func main() {
 		usage(os.Args[0])
 	}
 	command := os.Args[1]
-	var conn connection.Connection = new(CmdConnection)
+	var conn server.Connection = new(CmdConnection)
 	h := handler.New(&conn)
 	var arguments = map[string]string{}
 	for _, arg := range os.Args[2:] {

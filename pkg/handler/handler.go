@@ -20,17 +20,17 @@ import (
 	"reflect"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/mi"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/event"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/connection"
+	"github.com/OpenSIPS/opensips-calling-api/pkg/server"
 )
 
 type Handler struct {
-	conn *connection.Connection
+	conn *server.Connection
 	mi mi.MI
 	ev event.Event
 	done chan error
 }
 
-func New(conn *connection.Connection) (h *Handler) {
+func New(conn *server.Connection) (h *Handler) {
 	h = new(Handler)
 	h.mi = mi.MIHandler()
 	h.ev = event.EventHandler(h.mi)

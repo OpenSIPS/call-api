@@ -16,7 +16,7 @@
 package event
 
 import (
-	"log"
+	"github.com/sirupsen/logrus"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/mi"
 )
 
@@ -28,7 +28,7 @@ type Event interface {
 func EventHandler(mi mi.MI) (*EventDatagram) {
 	event := new(EventDatagram)
 	if err := event.Connect(mi); err != nil {
-		log.Printf("ERROR creating: %v", err)
+		logrus.Printf("ERROR creating: %v", err)
 		return nil
 	}
 	return event

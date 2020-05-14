@@ -16,8 +16,9 @@
 package mi
 
 import (
-	"log"
 	"net"
+
+	"github.com/sirupsen/logrus"
 )
 
 type MIreply func(result map[string]interface{}, param interface{})
@@ -36,7 +37,7 @@ type MI interface {
 func MIHandler() (*MIDatagram) {
 	mi := new(MIDatagram)
 	if err := mi.Connect(url); err != nil {
-		log.Printf("ERROR connecting: %v", err)
+		logrus.Printf("ERROR connecting: %v", err)
 		return nil
 	}
 	return mi

@@ -17,8 +17,9 @@ package main
 
 import (
 	"os"
-	"log"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/handler"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/server"
 )
@@ -28,20 +29,20 @@ type CmdConnection struct {}
 
 func (conn *CmdConnection) Report(report string) {
 	/* this connection simply outputs the results */
-	log.Print(report)
+	logrus.Print(report)
 }
 
 func (conn *CmdConnection) Close() {
 }
 
 func usage(prog string) {
-	log.Fatalf("Usage: %s command [arguments...]", prog)
+	logrus.Fatalf("Usage: %s command [arguments...]", prog)
 }
 
 func main() {
 
 	if len(os.Args) < 2 {
-		log.Print("no command specified!")
+		logrus.Print("no command specified!")
 		usage(os.Args[0])
 	}
 	command := os.Args[1]
@@ -57,6 +58,6 @@ func main() {
 		err = h.Wait()
 	}
 	if err != nil {
-		log.Printf("ERR: %v", err)
+		logrus.Printf("ERR: %v", err)
 	}
 }

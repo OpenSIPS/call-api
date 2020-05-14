@@ -22,17 +22,21 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
 
 // OpenSIPS Calling API "config.yml" file structure
-// Add a line for each YAML setting you want to be decoded
-//
-// More complex YAML structure examples here:
-//   https://github.com/koddr/example-go-config-yaml/blob/master/main.go#L18
 type Config struct {
-	Host string `yaml:"host,omitempty"`
-	Port int `yaml:"port,omitempty"`
+	Server struct {
+		Host string `yaml:"host,omitempty"`
+		Port int `yaml:"port,omitempty"`
+	} `yaml:"server"`
+
+	Log struct {
+		FilePath string `yaml:"file_path",omitempty"`
+		Level string `yaml:"level",omitempty"`
+	} `yaml:"log"`
 }
 
 
@@ -80,4 +84,28 @@ func ParseFlags() (string, error) {
 	flag.Parse()
 
 	return configPath, nil
+}
+
+
+func InitLogging(cfg *Config) (file *os.File, err error) {
+	if cfg.Log.FilePath != "" {
+		f, err := os.OpenFile(cfg.Log.FilePath, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		logrus.SetOutput(f)
+		file = f
+	}
+
+	if cfg.Log.Level != "" {
+		level, err := logrus.ParseLevel(cfg.Log.Level)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		logrus.SetLevel(level)
+	}
+
+	return
 }

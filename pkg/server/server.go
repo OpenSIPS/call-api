@@ -16,13 +16,15 @@
 package server
 
 import (
-	"log"
+	"github.com/sirupsen/logrus"
+
 	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
 )
 
 type CallingAPI struct {}
 
+
 func (api *CallingAPI) Run(cfg *config.Config) error {
-	log.Println("Done!")
+	logrus.Println("Done!")
 	return nil
 }

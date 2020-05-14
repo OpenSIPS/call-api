@@ -18,23 +18,32 @@
 package main
 
 import (
-	"log"
-
+	"github.com/sirupsen/logrus"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/server"
 )
+
 
 func main() {
 	// parse cmdline args
 	cfgPath, err := config.ParseFlags()
 	if err != nil {
-		log.Fatal(err)
+		logrus.Fatal(err)
 	}
 
 	// read configuration
 	cfg, err := config.NewConfig(cfgPath)
 	if err != nil {
-		log.Fatal(err)
+		logrus.Fatal(err)
+	}
+
+	// prepare logging
+	logfile, err := config.InitLogging(cfg)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	if logfile != nil {
+		defer logfile.Close()
 	}
 
 	(&server.CallingAPI{}).Run(cfg)

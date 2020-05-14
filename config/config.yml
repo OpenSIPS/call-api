@@ -1,2 +1,20 @@
-host: localhost
-port: 5059
+# The OpenSIPS Calling API configuration file
+
+
+# properties for the API listener
+#   (it accepts long-lived WebSocket connections and talks JSON-RPC over them)
+server:
+  # the local machine IP Address to bind the API to
+  host: localhost
+
+  # the local machine TCP port to bind the API to
+  port: 5059
+
+
+# logging configuration (by default, the API logs to stderr)
+log:
+  # absolute path
+  #file_path: /tmp/out
+
+  # possible levels: DEBUG, INFO, WARN, ERROR
+  level: INFO

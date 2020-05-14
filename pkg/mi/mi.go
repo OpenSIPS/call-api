@@ -30,7 +30,7 @@ type MI interface {
 	Connect(url string) (error)
 	Wait() (error)
 	Call(command string, params interface{}, fn MIreply, fnp interface{}) (error)
-//	CallSync(command string, params interface{}) (map[string]interface{}, error)
+	CallSync(command string, params interface{}) (map[string]interface{}, error)
 }
 
 /* TODO: make a wiser detection here when/if we have multiple backends */

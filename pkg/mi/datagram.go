@@ -146,8 +146,31 @@ func (mi *MIDatagram) Call(command string, params interface{}, fn MIreply, fnp i
 	return nil
 }
 
-/*
-func (mi *MIDatagram) CallSync(command string, param interface{}) (map[string]interface{}, error) {
-	return nil, nil
+func (mi *MIDatagram) callSyncStore(result map[string]interface{}, param interface{}) {
+
+	var ok bool
+	var replyChan chan map[string]interface{}
+
+	if replyChan, ok = param.(chan map[string]interface{}); !ok {
+		mi.done <- errors.New("invalid parameter passed at callback")
+		return
+	}
+
+	replyChan <- result
 }
-*/
+
+func (mi *MIDatagram) CallSync(command string, param interface{}) (map[string]interface{}, error) {
+	replyChan := make(chan map[string]interface{}, 1)
+
+	err := mi.Call(command, param, mi.callSyncStore, replyChan);
+	if err != nil {
+		return nil, err
+	}
+
+	err = mi.Wait()
+	if err != nil {
+		return nil, err
+	}
+
+	return <- replyChan, nil
+}

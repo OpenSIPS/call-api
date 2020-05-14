@@ -98,10 +98,12 @@ func (mi *MIDatagram) getReply(currentId uint64, fn MIreply, params interface{})
 		mi.done <- errors.New(reply.Error.Message)
 		return
 	}
-	if result, ok := reply.Result.(map[string]interface{}); ok {
-		fn(result, params)
-	} else {
-		fn(nil, params)
+	if fn != nil {
+		if result, ok := reply.Result.(map[string]interface{}); ok {
+			fn(result, params)
+		} else {
+			fn(nil, params)
+		}
 	}
 	mi.done <- nil
 }

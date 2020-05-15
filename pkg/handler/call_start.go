@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"errors"
 	"strings"
-//	"strconv"
 	"github.com/google/uuid"
+	"github.com/OpenSIPS/opensips-calling-api/pkg/event"
 )
 
 type callCoords struct {
@@ -28,7 +28,7 @@ type callCoords struct {
 	ruri, dlginfo string
 }
 
-func (h *Handler) callStartEnd(coords callCoords) {
+func (h *Handler) callStartEnd(coords *callCoords) {
 	var byeParams = map[string]string{
 		"method": "BYE",
 		"ruri": coords.ruri,
@@ -37,29 +37,55 @@ func (h *Handler) callStartEnd(coords callCoords) {
 	h.mi.Call("t_uac_dlg", &byeParams, nil, nil)
 }
 
-func (h *Handler) callStartTransfer(result map[string]interface{}, param interface{}) {
-
+func (h *Handler) callStartNotify(result map[string]interface{}, param interface{}, sub event.Subscription) {
 	var ok bool
-	var coords callCoords
+	var coords *callCoords
 
-	if coords, ok = param.(callCoords); !ok {
+	if coords, ok = param.(*callCoords); !ok {
+		sub.Unsubscribe()
 		h.done <- errors.New("invalid parameter passed at callback")
 		return
 	}
 
+	status, ok := result["status"].(string)
+	if ok != true {
+		h.done <- errors.New("invalid returned status type")
+		return
+	}
+	h.Report("call " + coords.callid + " transfering status: " + status);
+
+	switch status[0] {
+	case '1': /* provisional - all good */
+	case '2': /* transfer successful */
+		h.callStartEnd(coords)
+		h.done <- nil
+	default:
+		h.done <- errors.New("Transfer failed with status " + status)
+	}
+}
+
+func (h *Handler) callStartTransfer(result map[string]interface{}, param interface{}) {
+
+	var ok bool
+	var coords *callCoords
+
+	if coords, ok = param.(*callCoords); !ok {
+		h.done <- errors.New("invalid parameter passed at callback")
+		return
+	}
+
+	/* TODO: handle failure */
+
 	/* XXX: report 2 - call transferred */
 	h.Report("call " + coords.callid + " has been transfered to " + coords.callee)
-	h.callStartEnd(coords)
-
-	h.done <- nil
 }
 
 func (h *Handler) callStartInitial(result map[string]interface{}, param interface{}) {
 
 	var ok bool
-	var coords callCoords
+	var coords *callCoords
 
-	if coords, ok = param.(callCoords); !ok {
+	if coords, ok = param.(*callCoords); !ok {
 		h.done <- errors.New("invalid parameter passed at callback")
 		return
 	}
@@ -104,8 +130,12 @@ func (h *Handler) callStartInitial(result map[string]interface{}, param interfac
 		"destination": coords.callee,
 	}
 
+	/* before transfering, register for new blind transfer events */
+	subs := h.ev.Subscribe("E_CALL_BLIND_TRANSFER", h.callStartNotify, coords)
+
 	err := h.mi.Call("call_transfer", &transferParams, h.callStartTransfer, coords)
 	if err != nil {
+		subs.Unsubscribe()
 		h.done <- err
 		return
 	}
@@ -158,7 +188,7 @@ func (h *Handler) CallStart(params map[string]string) {
 		dlginfo: "",
 	}
 
-	err := h.mi.Call("t_uac_dlg", &inviteParams, h.callStartInitial, coords)
+	err := h.mi.Call("t_uac_dlg", &inviteParams, h.callStartInitial, &coords)
 	if err != nil {
 		h.done <- err
 		return

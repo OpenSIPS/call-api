@@ -20,14 +20,25 @@ import (
 	"github.com/OpenSIPS/opensips-calling-api/pkg/mi"
 )
 
-type Event interface {
-	Connect(mi.MI) (error)
-	Socket() (string)
+type EventNotify func(result map[string]interface{}, param interface{}, sub Subscription)
+
+type Subscription interface {
+	Event() (string)
+	String() (string)
+	Unsubscribe()
 }
 
-func EventHandler(mi mi.MI) (*EventDatagram) {
+type Event interface {
+	Init(mi.MI) (error)
+	Close()
+	Subscribe(event string, fn EventNotify, fnp interface{}) (Subscription)
+}
+
+
+func EventHandler(mi mi.MI) (Event) {
+	/* TODO: check based on config what exactly to do here */
 	event := new(EventDatagram)
-	if err := event.Connect(mi); err != nil {
+	if err := event.Init(mi); err != nil {
 		logrus.Printf("ERROR creating: %v", err)
 		return nil
 	}

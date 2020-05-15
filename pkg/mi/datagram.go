@@ -134,6 +134,11 @@ func (mi *MIDatagram) Call(command string, params interface{}, fn MIreply, fnp i
 	if err != nil {
 		return err
 	}
+
+	/* make sure the channel is drained */
+	for len(mi.done) > 0 {
+		<-mi.done
+	}
 	/* writing the request */
 	mi.conn.SetWriteDeadline(time.Now().Add(time.Second))
 	_, err = mi.conn.Write(jb)

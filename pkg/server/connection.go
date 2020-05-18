@@ -15,7 +15,10 @@
 
 package server
 
+import (
+	"github.com/OpenSIPS/opensips-calling-api/pkg/cmd"
+)
+
 type Connection interface {
-	Report(report string)
-	Close()
+	Notify(cmd *cmd.Cmd, notify interface{})
 }

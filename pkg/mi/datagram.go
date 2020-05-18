@@ -53,7 +53,7 @@ func (mi *MIDatagram) Addr() (net.Addr) {
 	return mi.conn.RemoteAddr()
 }
 
-func (mi *MIDatagram) getReply(currentId uint64, fn MIreply, params interface{}) {
+func (mi *MIDatagram) getReply(currentId uint64, fn MIreply) {
 
 	r, _,  err := mi.conn.ReadFrom(mi.buffer)
 	if err != nil {
@@ -73,7 +73,7 @@ func (mi *MIDatagram) getReply(currentId uint64, fn MIreply, params interface{})
 		return
 	}
 
-	fn(reply, params)
+	fn(reply)
 	mi.done <- nil
 }
 
@@ -81,7 +81,7 @@ func (mi *MIDatagram) Wait() (error) {
 	return <- mi.done
 }
 
-func (mi *MIDatagram) Call(command string, params interface{}, fn MIreply, fnp interface{}) (error) {
+func (mi *MIDatagram) Call(command string, params interface{}, fn MIreply) (error) {
 
 	mi.idLock.Lock()
 	currentId := mi.id
@@ -106,27 +106,23 @@ func (mi *MIDatagram) Call(command string, params interface{}, fn MIreply, fnp i
 	}
 
 	/* waiting for the reply */
-	go mi.getReply(currentId, fn, fnp)
+	go mi.getReply(currentId, fn)
 	return nil
 }
 
-func (mi *MIDatagram) callSyncStore(response *jsonrpc.JsonRPCResponse, param interface{}) {
+type miDatagramSync struct {
+	reply chan *jsonrpc.JsonRPCResponse
+}
 
-	var ok bool
-	var replyChan chan *jsonrpc.JsonRPCResponse
+func (mi *miDatagramSync) callSyncStore(response *jsonrpc.JsonRPCResponse) {
 
-	if replyChan, ok = param.(chan *jsonrpc.JsonRPCResponse); !ok {
-		mi.done <- errors.New("invalid parameter passed at callback")
-		return
-	}
-
-	replyChan <- response
+	mi.reply <- response
 }
 
 func (mi *MIDatagram) CallSync(command string, param interface{}) (*jsonrpc.JsonRPCResponse, error) {
-	replyChan := make(chan *jsonrpc.JsonRPCResponse, 1)
+	dgramSync := &miDatagramSync{make(chan *jsonrpc.JsonRPCResponse, 1)}
 
-	err := mi.Call(command, param, mi.callSyncStore, replyChan);
+	err := mi.Call(command, param, dgramSync.callSyncStore);
 	if err != nil {
 		return nil, err
 	}
@@ -136,5 +132,5 @@ func (mi *MIDatagram) CallSync(command string, param interface{}) (*jsonrpc.Json
 		return nil, err
 	}
 
-	return <- replyChan, nil
+	return <- dgramSync.reply, nil
 }

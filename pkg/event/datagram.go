@@ -30,8 +30,7 @@ import (
 type EventDatagramSub struct {
 	event string
 	conn *EventDatagramConn
-	fn EventNotification
-	fnp interface{}
+	notify EventNotification
 }
 
 func (sub *EventDatagramSub) String() (string) {
@@ -108,7 +107,7 @@ func (conn *EventDatagramConn) waitForEvents() {
 					sub := conn.getSubscription(result.Method)
 					// run in a different routine to avoid blocking
 					if sub != nil {
-						go sub.fn(sub, result, sub.fnp)
+						go sub.notify(sub, result)
 					} else {
 						logrus.Warn("unknown subscriber for event " + result.Method)
 					}
@@ -224,7 +223,7 @@ func (event *EventDatagram) Init(mi mi.MI) (error) {
 	return nil
 }
 
-func (event *EventDatagram) Subscribe(ev string, fn EventNotification, fnp interface{}) (Subscription) {
+func (event *EventDatagram) Subscribe(ev string, notify EventNotification) (Subscription) {
 
 	var conn *EventDatagramConn
 
@@ -246,7 +245,7 @@ func (event *EventDatagram) Subscribe(ev string, fn EventNotification, fnp inter
 		event.conns = append(event.conns, conn)
 	}
 
-	sub := &EventDatagramSub{conn: conn, event:ev, fn: fn, fnp: fnp}
+	sub := &EventDatagramSub{conn: conn, event:ev, notify: notify}
 	conn.subs = append(conn.subs, sub)
 	event.lock.Unlock()
 

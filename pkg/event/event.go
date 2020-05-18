@@ -21,7 +21,7 @@ import (
 	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
 )
 
-type EventNotification func(sub Subscription, notify *jsonrpc.JsonRPCNotification, param interface{})
+type EventNotification func(sub Subscription, notify *jsonrpc.JsonRPCNotification)
 
 type Subscription interface {
 	Event() (string)
@@ -32,7 +32,7 @@ type Subscription interface {
 type Event interface {
 	Init(mi.MI) (error)
 	Close()
-	Subscribe(event string, fn EventNotification, fnp interface{}) (Subscription)
+	Subscribe(event string, notify EventNotification) (Subscription)
 }
 
 func EventHandler(mi mi.MI) (Event) {

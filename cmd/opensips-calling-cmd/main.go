@@ -21,20 +21,18 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
+	"github.com/OpenSIPS/opensips-calling-api/pkg/cmd"
+	"github.com/OpenSIPS/opensips-calling-api/pkg/proxy"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/server"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/handler"
 )
 
 /* used to simulate the Communication interface */
 type CmdConnection struct {}
 
-func (conn *CmdConnection) Report(report string) {
+func (conn *CmdConnection) Notify(c *cmd.Cmd, notify interface{}) {
 	/* this connection simply outputs the results */
-	logrus.Print(report)
-}
-
-func (conn *CmdConnection) Close() {
+	logrus.Printf("%s: %v", c.ID, notify)
 }
 
 func usage(prog string) {
@@ -66,20 +64,26 @@ func main() {
 		logrus.Error("no command specified!")
 		usage(os.Args[0])
 	}
+
+	proxy := proxy.NewProxy(cfg)
+	if proxy == nil {
+		logrus.Fatal("could not initialize SIP proxy")
+	}
 	command := flag.Arg(0)
 	logrus.Debugf("Running command %s", command)
 	var conn server.Connection = new(CmdConnection)
-	h := handler.New(cfg, &conn)
+	c := cmd.New(command, "", proxy, conn.Notify)
+	if c == nil {
+		logrus.Fatalf("could not initialize %s command", command)
+	}
 	var arguments = map[string]string{}
 	for _, arg := range flag.Args()[1:] {
 		param := strings.Split(arg, "=")
 		arguments[param[0]] = strings.Join(param[1:], "=")
 	}
-	err = h.Run(command, arguments)
-	if err == nil {
-		err = h.Wait()
-	}
+	c.Run(arguments)
+	err = c.Wait()
 	if err != nil {
-		logrus.Printf("ERR: %v", err)
+		logrus.Fatal(err.Error())
 	}
 }

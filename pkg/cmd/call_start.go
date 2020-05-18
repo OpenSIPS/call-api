@@ -13,110 +13,95 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
-package handler
+package cmd
 
 import (
 	"fmt"
 	"errors"
 	"strings"
-	"github.com/google/uuid"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/event"
 	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
 )
 
-type callCoords struct {
-	callid, caller, callee string
-	ruri, dlginfo string
+type callStartCmd struct {
+	caller, callee, ruri, dlginfo string
+	cmd *Cmd
 }
 
-func (h *Handler) callStartEnd(coords *callCoords) {
+func (cs *callStartCmd) returnError(err error) {
+	cs.cmd.done <- err
+}
+
+func (cs *callStartCmd) callStartEnd() {
 	var byeParams = map[string]string{
 		"method": "BYE",
-		"ruri": coords.ruri,
-		"headers": coords.dlginfo + "CSeq: 3 BYE\r\n", /* guessing the cseq */
+		"ruri": cs.ruri,
+		"headers": cs.dlginfo + "CSeq: 3 BYE\r\n", /* guessing the cseq */
 	}
-	h.mi.Call("t_uac_dlg", &byeParams, nil, nil)
+	cs.cmd.proxy.MICall("t_uac_dlg", &byeParams, nil)
 }
 
-func (h *Handler) callStartNotify(sub event.Subscription, notify *jsonrpc.JsonRPCNotification, param interface{}) {
-	var ok bool
-	var coords *callCoords
 
-	if coords, ok = param.(*callCoords); !ok {
-		sub.Unsubscribe()
-		h.done <- errors.New("invalid parameter passed at callback")
-		return
-	}
+func (cs *callStartCmd) callStartNotify(sub event.Subscription, notify *jsonrpc.JsonRPCNotification) {
 
 	status, err := notify.GetString("status")
 	if err != nil {
-		h.done <- err
+		cs.returnError(err)
 		return
 	}
-	h.Report("call " + coords.callid + " transfering status: " + status);
+	cs.cmd.Notify("transfering status: " + status);
 
 	switch status[0] {
 	case '1': /* provisional - all good */
 	case '2': /* transfer successful */
-		h.callStartEnd(coords)
-		h.done <- nil
+		cs.callStartEnd()
+		cs.returnError(nil)
 	default:
-		h.done <- errors.New("Transfer failed with status " + status)
+		cs.returnError(errors.New("Transfer failed with status " + status))
 	}
 }
 
-func (h *Handler) callStartTransfer(response *jsonrpc.JsonRPCResponse, param interface{}) {
-
-	var ok bool
-	var coords *callCoords
-
-	if coords, ok = param.(*callCoords); !ok {
-		h.done <- errors.New("invalid parameter passed at callback")
-		return
-	}
-
-	/* TODO: handle jerr */
-
-	/* XXX: report 2 - call transferred */
-	h.Report("call " + coords.callid + " has been transfered to " + coords.callee)
-}
-
-func (h *Handler) callStartInitial(response *jsonrpc.JsonRPCResponse, param interface{}) {
-
-	var ok bool
-	var err error
-	var coords *callCoords
-
-	if coords, ok = param.(*callCoords); !ok {
-		h.done <- errors.New("invalid parameter passed at callback")
-		return
-	}
+func (cs *callStartCmd) callStartTransfer(response *jsonrpc.JsonRPCResponse) {
 
 	if response.IsError() {
-		h.done <- response.Error
+		cs.callStartEnd()
+		cs.returnError(response.Error)
+		/* TODO: we should also unregister the subscription */
+		return
+	}
+
+	/* XXX: report 2 - call transferred */
+	cs.cmd.Notify("transfered to " + cs.callee);
+}
+
+
+func (cs *callStartCmd) callStartInitial(response *jsonrpc.JsonRPCResponse) {
+
+	if response.IsError() {
+		cs.returnError(response.Error)
 		return
 	}
 
 	status, err := response.GetString("Status")
 	if err != nil {
-		h.done <- err
+		cs.returnError(err)
 		return
 	}
 
 	if strings.Split(status, " ")[0] != "200" {
-		h.done <- errors.New("failed to establish initial call: " + status)
+		cs.returnError(errors.New("failed to establish initial call: " + status))
 		return
 	}
 
-	coords.ruri, err = response.GetString("RURI")
+	cs.ruri, err = response.GetString("RURI")
 	if err != nil {
-		h.done <- err
+		cs.returnError(err)
 		return
 	}
 
 	message, err := response.GetString("Message");
 	if err != nil {
-		h.done <- err
+		cs.returnError(err)
 		return
 	}
 
@@ -124,31 +109,31 @@ func (h *Handler) callStartInitial(response *jsonrpc.JsonRPCResponse, param inte
 	for _, header := range strings.Split(message, "\r\n") {
 		switch strings.Split(header, ":")[0] {
 		case "From", "To", "Routes", "Call-ID", "Call-Id":
-			coords.dlginfo += header + "\r\n"
+			cs.dlginfo += header + "\r\n"
 		}
 	}
 
 	/* XXX: report 1 - call answered */
-	h.Report("call " + coords.callid + " answered by " + coords.caller)
+	cs.cmd.Notify("answered by " + cs.caller)
 
 	var transferParams = map[string]string{
-		"callid": coords.callid,
+		"callid": cs.cmd.ID,
 		"leg": "callee",
-		"destination": coords.callee,
+		"destination": cs.callee,
 	}
 
 	/* before transfering, register for new blind transfer events */
-	subs := h.ev.Subscribe("E_CALL_BLIND_TRANSFER", h.callStartNotify, coords)
+	subs := cs.cmd.proxy.Subscribe("E_CALL_BLIND_TRANSFER", cs.callStartNotify)
 
-	err = h.mi.Call("call_transfer", &transferParams, h.callStartTransfer, coords)
+	err = cs.cmd.proxy.MICall("call_transfer", &transferParams, cs.callStartTransfer)
 	if err != nil {
 		subs.Unsubscribe()
-		h.done <- err
+		cs.returnError(err)
 		return
 	}
 }
 
-func (h *Handler) CallStart(params map[string]string) {
+func (c *Cmd) CallStart(params map[string]string) {
 
 	const headersFormat = "From: <%s>\r\n" +
 		"To: <%s>\r\n" +
@@ -165,20 +150,18 @@ func (h *Handler) CallStart(params map[string]string) {
 		"m=audio 9 RTP/AVP 0\r\n" +
 		"a=rtpmap:0 PCMU/8000\r\n"
 
-	callid := uuid.New().String()
-
 	caller, ok := params["caller"]
 	if ok != true {
-		h.done <- errors.New("caller not specified")
+		c.done <- errors.New("caller not specified")
 		return
 	}
 	callee, ok := params["callee"]
 	if ok != true {
-		h.done <- errors.New("callee not specified")
+		c.done <- errors.New("callee not specified")
 		return
 	}
 
-	headers := fmt.Sprintf(headersFormat, caller, callee, caller, callid)
+	headers := fmt.Sprintf(headersFormat, caller, callee, caller, c.ID)
 
 	var inviteParams = map[string]string{
 		"method": "INVITE",
@@ -187,17 +170,17 @@ func (h *Handler) CallStart(params map[string]string) {
 		"body": inviteBody,
 	}
 
-	coords := callCoords{
-		callid: callid,
+	cs := &callStartCmd{
 		caller: caller,
 		callee: callee,
 		ruri: caller,
 		dlginfo: "",
+		cmd: c,
 	}
 
-	err := h.mi.Call("t_uac_dlg", &inviteParams, h.callStartInitial, &coords)
+	err := c.proxy.MICall("t_uac_dlg", &inviteParams, cs.callStartInitial)
 	if err != nil {
-		h.done <- err
+		c.done <- err
 		return
 	}
 }

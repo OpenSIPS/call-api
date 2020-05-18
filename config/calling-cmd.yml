@@ -1,0 +1,13 @@
+# The OpenSIPS Calling CMD configuration file
+
+# properties for the MI communication
+mi:
+  url: 127.0.0.1:8080
+
+# logging configuration (by default, the API logs to stderr)
+log:
+  # absolute path
+  #file_path: /tmp/out
+
+  # possible levels: DEBUG, INFO, WARN, ERROR
+  level: DEBUG

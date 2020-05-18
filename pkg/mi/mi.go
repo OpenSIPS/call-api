@@ -22,7 +22,7 @@ import (
 	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
 )
 
-type MIreply func(response *jsonrpc.JsonRPCResponse, param interface{})
+type MIreply func(response *jsonrpc.JsonRPCResponse)
 
 var default_url string = "127.0.0.1:8080"
 
@@ -30,7 +30,7 @@ type MI interface {
 	Addr() (net.Addr)
 	Connect(url string) (error)
 	Wait() (error)
-	Call(command string, params interface{}, fn MIreply, fnp interface{}) (error)
+	Call(command string, params interface{}, fn MIreply) (error)
 	CallSync(command string, params interface{}) (*jsonrpc.JsonRPCResponse, error)
 }
 

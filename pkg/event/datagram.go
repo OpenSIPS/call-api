@@ -23,13 +23,14 @@ import (
 	"syscall"
 	"github.com/sirupsen/logrus"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/mi"
+	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
 )
 
 // EventDatagram
 type EventDatagramSub struct {
 	event string
 	conn *EventDatagramConn
-	fn EventNotify
+	fn EventNotification
 	fnp interface{}
 }
 
@@ -56,11 +57,11 @@ type EventDatagramConn struct {
 	handler *EventDatagram
 }
 
-func (conn *EventDatagramConn) parse(result string) (error, string, map[string]interface{}) {
+func (conn *EventDatagramConn) parse(result string) (*jsonrpc.JsonRPCNotification, error) {
 
 	split := strings.Split(result, "\n")
 	if len(split) < 1 || len(split[0]) < 1 {
-		return errors.New("no event specified"), "", nil
+		return nil, errors.New("no event specified")
 	}
 	event := split[0]
 	ret := make(map[string]interface{})
@@ -76,7 +77,7 @@ func (conn *EventDatagramConn) parse(result string) (error, string, map[string]i
 		}
 	}
 
-	return nil, event, ret
+	return jsonrpc.NewNotification(event, ret), nil
 }
 
 func (conn *EventDatagramConn) waitForEvents() {
@@ -100,16 +101,16 @@ func (conn *EventDatagramConn) waitForEvents() {
 		default:
 			r, _, err := conn.udp.ReadFrom(buffer)
 			if err == nil {
-				err, event, result := conn.parse(string(buffer[0:r]))
+				result, err := conn.parse(string(buffer[0:r]))
 				if err != nil {
 					logrus.Error("could not parse notification: " + err.Error())
 				} else {
-					sub := conn.getSubscription(event)
+					sub := conn.getSubscription(result.Method)
 					// run in a different routine to avoid blocking
 					if sub != nil {
-						go sub.fn(result, sub.fnp, sub)
+						go sub.fn(sub, result, sub.fnp)
 					} else {
-						logrus.Warn("unknown subscriber for event " + event)
+						logrus.Warn("unknown subscriber for event " + result.Method)
 					}
 				}
 			} else {
@@ -143,7 +144,7 @@ func (conn *EventDatagramConn) Unsubscribe(sub *EventDatagramSub) {
 	}
 	_, err := conn.handler.mi.CallSync("event_subscribe", &eviParams);
 	if err != nil {
-		logrus.Error("could not unsubscribe for event " + sub.Event())
+		logrus.Error("could not unsubscribe for event " + sub.Event() + " " + err.Error())
 	}
 
 }
@@ -223,7 +224,7 @@ func (event *EventDatagram) Init(mi mi.MI) (error) {
 	return nil
 }
 
-func (event *EventDatagram) Subscribe(ev string, fn EventNotify, fnp interface{}) (Subscription) {
+func (event *EventDatagram) Subscribe(ev string, fn EventNotification, fnp interface{}) (Subscription) {
 
 	var conn *EventDatagramConn
 

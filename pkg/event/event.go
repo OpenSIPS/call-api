@@ -18,9 +18,10 @@ package event
 import (
 	"github.com/sirupsen/logrus"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/mi"
+	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
 )
 
-type EventNotify func(result map[string]interface{}, param interface{}, sub Subscription)
+type EventNotification func(sub Subscription, notify *jsonrpc.JsonRPCNotification, param interface{})
 
 type Subscription interface {
 	Event() (string)
@@ -31,9 +32,8 @@ type Subscription interface {
 type Event interface {
 	Init(mi.MI) (error)
 	Close()
-	Subscribe(event string, fn EventNotify, fnp interface{}) (Subscription)
+	Subscribe(event string, fn EventNotification, fnp interface{}) (Subscription)
 }
-
 
 func EventHandler(mi mi.MI) (Event) {
 	/* TODO: check based on config what exactly to do here */

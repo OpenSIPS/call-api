@@ -20,7 +20,7 @@ import (
 	"time"
 	"sync"
 	"errors"
-	"encoding/json"
+	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
 )
 
 type MIDatagram struct {
@@ -29,26 +29,6 @@ type MIDatagram struct {
 	idLock sync.Mutex
 	id     uint64
 	done   chan error
-}
-
-type miRequest struct {
-	JSONRPC string                 `json:"jsonrpc"`
-	ID      uint64                 `json:"id"`
-	Method  string                 `json:"method"`
-	Params  map[string]interface{} `json:"params,omitempty"`
-}
-
-type miError struct {
-	Code    int                     `json:"code"`
-	Message string                  `json:"message"`
-	Data    interface{}             `json:"data,omitempty"`
-}
-
-type miResponse struct {
-	JSONRPC string                 `json:"jsonrpc"`
-	ID      uint64                 `json:"id"`
-	Result  interface{}            `json:"result,omitempty"`
-	Error   *miError               `json:"error,omitempty"`
 }
 
 func (mi *MIDatagram) Connect(url string) error {
@@ -75,15 +55,14 @@ func (mi *MIDatagram) Addr() (net.Addr) {
 
 func (mi *MIDatagram) getReply(currentId uint64, fn MIreply, params interface{}) {
 
-	var reply miResponse
-
 	r, _,  err := mi.conn.ReadFrom(mi.buffer)
 	if err != nil {
 		mi.done <- err
 		return
 	}
 
-	err = json.Unmarshal(mi.buffer[0:r], &reply)
+	reply := &jsonrpc.JsonRPCResponse{}
+	err = reply.Parse(mi.buffer[0:r])
 	if err != nil {
 		mi.done <- err
 		return
@@ -94,17 +73,7 @@ func (mi *MIDatagram) getReply(currentId uint64, fn MIreply, params interface{})
 		return
 	}
 
-	if reply.Error != nil {
-		mi.done <- errors.New(reply.Error.Message)
-		return
-	}
-	if fn != nil {
-		if result, ok := reply.Result.(map[string]interface{}); ok {
-			fn(result, params)
-		} else {
-			fn(nil, params)
-		}
-	}
+	fn(reply, params)
 	mi.done <- nil
 }
 
@@ -119,18 +88,8 @@ func (mi *MIDatagram) Call(command string, params interface{}, fn MIreply, fnp i
 	mi.id += 1
 	mi.idLock.Unlock()
 
-	js := struct {
-		Method  string           `json:"method"`
-		Params  interface{}      `json:"params,omitempty"`
-		JSONRPC string           `json:"jsonrpc"`
-		ID      uint64           `json:"id"`
-	}{
-		Method:  command,
-		Params:  params,
-		JSONRPC: "2.0",
-		ID:      currentId,
-	}
-	jb, err := json.Marshal(js)
+	js := jsonrpc.NewRequest(currentId, command, params)
+	jb, err := js.Buffer()
 	if err != nil {
 		return err
 	}
@@ -151,21 +110,21 @@ func (mi *MIDatagram) Call(command string, params interface{}, fn MIreply, fnp i
 	return nil
 }
 
-func (mi *MIDatagram) callSyncStore(result map[string]interface{}, param interface{}) {
+func (mi *MIDatagram) callSyncStore(response *jsonrpc.JsonRPCResponse, param interface{}) {
 
 	var ok bool
-	var replyChan chan map[string]interface{}
+	var replyChan chan *jsonrpc.JsonRPCResponse
 
-	if replyChan, ok = param.(chan map[string]interface{}); !ok {
+	if replyChan, ok = param.(chan *jsonrpc.JsonRPCResponse); !ok {
 		mi.done <- errors.New("invalid parameter passed at callback")
 		return
 	}
 
-	replyChan <- result
+	replyChan <- response
 }
 
-func (mi *MIDatagram) CallSync(command string, param interface{}) (map[string]interface{}, error) {
-	replyChan := make(chan map[string]interface{}, 1)
+func (mi *MIDatagram) CallSync(command string, param interface{}) (*jsonrpc.JsonRPCResponse, error) {
+	replyChan := make(chan *jsonrpc.JsonRPCResponse, 1)
 
 	err := mi.Call(command, param, mi.callSyncStore, replyChan);
 	if err != nil {

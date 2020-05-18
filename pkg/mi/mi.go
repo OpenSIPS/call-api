@@ -17,11 +17,11 @@ package mi
 
 import (
 	"net"
-
 	"github.com/sirupsen/logrus"
+	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
 )
 
-type MIreply func(result map[string]interface{}, param interface{})
+type MIreply func(response *jsonrpc.JsonRPCResponse, param interface{})
 
 var url string = "127.0.0.1:8080"
 
@@ -30,7 +30,7 @@ type MI interface {
 	Connect(url string) (error)
 	Wait() (error)
 	Call(command string, params interface{}, fn MIreply, fnp interface{}) (error)
-	CallSync(command string, params interface{}) (map[string]interface{}, error)
+	CallSync(command string, params interface{}) (*jsonrpc.JsonRPCResponse, error)
 }
 
 /* TODO: make a wiser detection here when/if we have multiple backends */

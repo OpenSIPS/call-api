@@ -21,6 +21,7 @@ import (
 	"strings"
 	"github.com/google/uuid"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/event"
+	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
 )
 
 type callCoords struct {
@@ -37,7 +38,7 @@ func (h *Handler) callStartEnd(coords *callCoords) {
 	h.mi.Call("t_uac_dlg", &byeParams, nil, nil)
 }
 
-func (h *Handler) callStartNotify(result map[string]interface{}, param interface{}, sub event.Subscription) {
+func (h *Handler) callStartNotify(sub event.Subscription, notify *jsonrpc.JsonRPCNotification, param interface{}) {
 	var ok bool
 	var coords *callCoords
 
@@ -47,9 +48,9 @@ func (h *Handler) callStartNotify(result map[string]interface{}, param interface
 		return
 	}
 
-	status, ok := result["status"].(string)
-	if ok != true {
-		h.done <- errors.New("invalid returned status type")
+	status, err := notify.GetString("status")
+	if err != nil {
+		h.done <- err
 		return
 	}
 	h.Report("call " + coords.callid + " transfering status: " + status);
@@ -64,7 +65,7 @@ func (h *Handler) callStartNotify(result map[string]interface{}, param interface
 	}
 }
 
-func (h *Handler) callStartTransfer(result map[string]interface{}, param interface{}) {
+func (h *Handler) callStartTransfer(response *jsonrpc.JsonRPCResponse, param interface{}) {
 
 	var ok bool
 	var coords *callCoords
@@ -74,15 +75,16 @@ func (h *Handler) callStartTransfer(result map[string]interface{}, param interfa
 		return
 	}
 
-	/* TODO: handle failure */
+	/* TODO: handle jerr */
 
 	/* XXX: report 2 - call transferred */
 	h.Report("call " + coords.callid + " has been transfered to " + coords.callee)
 }
 
-func (h *Handler) callStartInitial(result map[string]interface{}, param interface{}) {
+func (h *Handler) callStartInitial(response *jsonrpc.JsonRPCResponse, param interface{}) {
 
 	var ok bool
+	var err error
 	var coords *callCoords
 
 	if coords, ok = param.(*callCoords); !ok {
@@ -90,9 +92,14 @@ func (h *Handler) callStartInitial(result map[string]interface{}, param interfac
 		return
 	}
 
-	status, ok := result["Status"].(string)
-	if ok != true {
-		h.done <- errors.New("invalid returned status type")
+	if response.IsError() {
+		h.done <- response.Error
+		return
+	}
+
+	status, err := response.GetString("Status")
+	if err != nil {
+		h.done <- err
 		return
 	}
 
@@ -101,15 +108,15 @@ func (h *Handler) callStartInitial(result map[string]interface{}, param interfac
 		return
 	}
 
-	coords.ruri, ok = result["RURI"].(string)
-	if ok != true {
-		h.done <- errors.New("invalid RURI returned")
+	coords.ruri, err = response.GetString("RURI")
+	if err != nil {
+		h.done <- err
 		return
 	}
 
-	message, ok := result["Message"].(string)
-	if ok != true {
-		h.done <- errors.New("invalid Message returned")
+	message, err := response.GetString("Message");
+	if err != nil {
+		h.done <- err
 		return
 	}
 
@@ -133,7 +140,7 @@ func (h *Handler) callStartInitial(result map[string]interface{}, param interfac
 	/* before transfering, register for new blind transfer events */
 	subs := h.ev.Subscribe("E_CALL_BLIND_TRANSFER", h.callStartNotify, coords)
 
-	err := h.mi.Call("call_transfer", &transferParams, h.callStartTransfer, coords)
+	err = h.mi.Call("call_transfer", &transferParams, h.callStartTransfer, coords)
 	if err != nil {
 		subs.Unsubscribe()
 		h.done <- err

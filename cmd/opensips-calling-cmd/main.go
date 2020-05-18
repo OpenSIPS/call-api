@@ -22,6 +22,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/handler"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/server"
+	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
 )
 
 /* used to simulate the Communication interface */
@@ -40,6 +41,7 @@ func usage(prog string) {
 }
 
 func main() {
+	/*
 
 	if len(os.Args) < 2 {
 		logrus.Print("no command specified!")
@@ -60,4 +62,5 @@ func main() {
 	if err != nil {
 		logrus.Printf("ERR: %v", err)
 	}
+	*/
 }

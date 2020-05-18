@@ -37,6 +37,10 @@ type Config struct {
 		FilePath string `yaml:"file_path",omitempty"`
 		Level string `yaml:"level",omitempty"`
 	} `yaml:"log"`
+
+	MI struct {
+		URL string `yaml:"url,omitempty"`
+	} `yaml:"mi"`
 }
 
 
@@ -79,7 +83,7 @@ func ValidateConfigPath(path string) error {
 func ParseFlags(tool string) (string, error) {
 	var configPath string
 
-	flag.StringVar(&configPath, "config", "./config/" + tool " + .yml", "path to config file")
+	flag.StringVar(&configPath, "config", "./config/" + tool + ".yml", "path to config file")
 
 	flag.Parse()
 

@@ -17,12 +17,13 @@ package main
 
 import (
 	"os"
+	"flag"
 	"strings"
 
 	"github.com/sirupsen/logrus"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/handler"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/server"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
+	"github.com/OpenSIPS/opensips-calling-api/pkg/server"
+	"github.com/OpenSIPS/opensips-calling-api/pkg/handler"
 )
 
 /* used to simulate the Communication interface */
@@ -41,26 +42,44 @@ func usage(prog string) {
 }
 
 func main() {
-	/*
 
-	if len(os.Args) < 2 {
-		logrus.Print("no command specified!")
+	cfgPath, err := config.ParseFlags("calling-cmd")
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	cfg, err := config.NewConfig(cfgPath)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	/* initilize logging */
+	logfile, err := config.InitLogging(cfg)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	if logfile != nil {
+		defer logfile.Close()
+	}
+
+	if flag.NArg() < 1 {
+		logrus.Error("no command specified!")
 		usage(os.Args[0])
 	}
-	command := os.Args[1]
+	command := flag.Arg(0)
+	logrus.Debugf("Running command %s", command)
 	var conn server.Connection = new(CmdConnection)
-	h := handler.New(&conn)
+	h := handler.New(cfg, &conn)
 	var arguments = map[string]string{}
-	for _, arg := range os.Args[2:] {
+	for _, arg := range flag.Args()[1:] {
 		param := strings.Split(arg, "=")
 		arguments[param[0]] = strings.Join(param[1:], "=")
 	}
-	err := h.Run(command, arguments)
+	err = h.Run(command, arguments)
 	if err == nil {
 		err = h.Wait()
 	}
 	if err != nil {
 		logrus.Printf("ERR: %v", err)
 	}
-	*/
 }

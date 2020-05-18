@@ -18,12 +18,13 @@ package mi
 import (
 	"net"
 	"github.com/sirupsen/logrus"
+	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
 	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
 )
 
 type MIreply func(response *jsonrpc.JsonRPCResponse, param interface{})
 
-var url string = "127.0.0.1:8080"
+var default_url string = "127.0.0.1:8080"
 
 type MI interface {
 	Addr() (net.Addr)
@@ -33,9 +34,17 @@ type MI interface {
 	CallSync(command string, params interface{}) (*jsonrpc.JsonRPCResponse, error)
 }
 
-func MIHandler() (MI) {
+func MIHandler(config *config.Config) (MI) {
 	/* TODO: make a wiser detection here when/if we have multiple backends */
+	var url string
+
 	mi := new(MIDatagram)
+	if config.MI.URL != "" {
+		url = config.MI.URL
+	} else {
+		url = default_url
+		logrus.Debugf("using default url=%s", url)
+	}
 	if err := mi.Connect(url); err != nil {
 		logrus.Printf("ERROR connecting: %v", err)
 		return nil

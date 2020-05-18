@@ -7,7 +7,7 @@ mi:
 # logging configuration (by default, the API logs to stderr)
 log:
   # absolute path
-  #file_path: /tmp/out
+  #file_path: /var/log/opensips-calling-cmd.log
 
   # possible levels: DEBUG, INFO, WARN, ERROR
   level: DEBUG

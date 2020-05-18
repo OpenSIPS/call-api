@@ -13,18 +13,12 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
-package server
+package ws_server
 
 import (
-	"github.com/sirupsen/logrus"
-
-	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
+	"github.com/OpenSIPS/opensips-calling-api/pkg/cmd"
 )
 
-type CallingAPI struct {}
-
-
-func (api *CallingAPI) Run(cfg *config.Config) error {
-	logrus.Println("Done!")
-	return nil
+type Connection interface {
+	Notify(cmd *cmd.Cmd, notify interface{})
 }

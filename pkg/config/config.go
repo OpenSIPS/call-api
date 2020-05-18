@@ -28,10 +28,10 @@ import (
 
 // OpenSIPS Calling API "config.yml" file structure
 type Config struct {
-	Server struct {
+	WSServer struct {
 		Host string `yaml:"host,omitempty"`
 		Port int `yaml:"port,omitempty"`
-	} `yaml:"server"`
+	} `yaml:"ws_server"`
 
 	Log struct {
 		FilePath string `yaml:"file_path",omitempty"`

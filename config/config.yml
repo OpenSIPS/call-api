@@ -1,9 +1,9 @@
 # The OpenSIPS Calling API configuration file
 
 
-# properties for the API listener
-#   (it accepts long-lived WebSocket connections and talks JSON-RPC over them)
-server:
+# the API WS listener accepts long-lived WebSocket
+# connections and talks JSON-RPC over them
+ws_server:
   # the local machine IP Address to bind the API to
   host: localhost
 
@@ -14,7 +14,7 @@ server:
 # logging configuration (by default, the API logs to stderr)
 log:
   # absolute path
-  #file_path: /tmp/out
+  #file_path: /var/log/opensips-calling-api.log
 
   # possible levels: DEBUG, INFO, WARN, ERROR
   level: INFO

@@ -20,7 +20,7 @@ package main
 import (
 	"github.com/sirupsen/logrus"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/server"
+	"github.com/OpenSIPS/opensips-calling-api/pkg/ws_server"
 )
 
 
@@ -46,5 +46,5 @@ func main() {
 		defer logfile.Close()
 	}
 
-	(&server.CallingAPI{}).Run(cfg)
+	ws_server.Run(cfg)
 }

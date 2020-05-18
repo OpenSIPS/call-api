@@ -24,7 +24,7 @@ import (
 	"github.com/OpenSIPS/opensips-calling-api/pkg/cmd"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/proxy"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/server"
+	"github.com/OpenSIPS/opensips-calling-api/pkg/ws_server"
 )
 
 /* used to simulate the Communication interface */
@@ -71,7 +71,7 @@ func main() {
 	}
 	command := flag.Arg(0)
 	logrus.Debugf("Running command %s", command)
-	var conn server.Connection = new(CmdConnection)
+	var conn ws_server.Connection = new(CmdConnection)
 	c := cmd.New(command, "", proxy, conn.Notify)
 	if c == nil {
 		logrus.Fatalf("could not initialize %s command", command)

@@ -33,8 +33,8 @@ type MI interface {
 	CallSync(command string, params interface{}) (*jsonrpc.JsonRPCResponse, error)
 }
 
-/* TODO: make a wiser detection here when/if we have multiple backends */
-func MIHandler() (*MIDatagram) {
+func MIHandler() (MI) {
+	/* TODO: make a wiser detection here when/if we have multiple backends */
 	mi := new(MIDatagram)
 	if err := mi.Connect(url); err != nil {
 		logrus.Printf("ERROR connecting: %v", err)

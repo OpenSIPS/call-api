@@ -76,10 +76,10 @@ func ValidateConfigPath(path string) error {
 
 
 // OpenSIPS Calling API command-line parameters
-func ParseFlags() (string, error) {
+func ParseFlags(tool string) (string, error) {
 	var configPath string
 
-	flag.StringVar(&configPath, "config", "./config/config.yml", "path to config file")
+	flag.StringVar(&configPath, "config", "./config/" + tool " + .yml", "path to config file")
 
 	flag.Parse()
 

@@ -26,6 +26,7 @@ import (
 
 type callStartCmd struct {
 	caller, callee, ruri, dlginfo string
+	sub event.Subscription
 	cmd *Cmd
 }
 
@@ -39,6 +40,7 @@ func (cs *callStartCmd) callStartEnd() {
 		"ruri": cs.ruri,
 		"headers": cs.dlginfo + "CSeq: 3 BYE\r\n", /* guessing the cseq */
 	}
+	cs.sub.Unsubscribe()
 	cs.cmd.proxy.MICall("t_uac_dlg", &byeParams, nil)
 }
 
@@ -67,7 +69,6 @@ func (cs *callStartCmd) callStartTransfer(response *jsonrpc.JsonRPCResponse) {
 	if response.IsError() {
 		cs.callStartEnd()
 		cs.returnError(response.Error)
-		/* TODO: we should also unregister the subscription */
 		return
 	}
 
@@ -124,11 +125,11 @@ func (cs *callStartCmd) callStartInitial(response *jsonrpc.JsonRPCResponse) {
 	}
 
 	/* before transfering, register for new blind transfer events */
-	subs := cs.cmd.proxy.Subscribe("E_CALL_BLIND_TRANSFER", cs.callStartNotify)
+	cs.sub = cs.cmd.proxy.Subscribe("E_CALL_BLIND_TRANSFER", cs.callStartNotify)
 
 	err = cs.cmd.proxy.MICall("call_transfer", &transferParams, cs.callStartTransfer)
 	if err != nil {
-		subs.Unsubscribe()
+		cs.sub.Unsubscribe()
 		cs.returnError(err)
 		return
 	}

@@ -20,6 +20,7 @@ import (
 	"github.com/OpenSIPS/opensips-calling-api/pkg/mi"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/event"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
+	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
 )
 
 type Proxy struct {
@@ -45,6 +46,10 @@ func NewProxy(cfg *config.Config) (p *Proxy) {
 
 func (proxy *Proxy) MICall(command string, params interface{}, fn mi.MIreply) (error) {
 	return proxy.mi.Call(command, params, fn)
+}
+
+func (proxy *Proxy) MICallSync(command string, params interface{}) (*jsonrpc.JsonRPCResponse, error) {
+	return proxy.mi.CallSync(command, params)
 }
 
 func (proxy *Proxy) Subscribe(event string, notify event.EventNotification) (event.Subscription) {

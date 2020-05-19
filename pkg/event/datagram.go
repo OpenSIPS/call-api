@@ -16,11 +16,12 @@
 package event
 
 import (
-	"net"
-	"sync"
 	"errors"
+	"net"
 	"strings"
+	"sync"
 	"syscall"
+
 	"github.com/sirupsen/logrus"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/mi"
 	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
@@ -153,7 +154,7 @@ func (conn *EventDatagramConn) Init(event *EventDatagram) (*EventDatagramConn) {
 	// we first need to check how we can connect to the MI handler
 	miAddr, ok := event.mi.Addr().(*net.UDPAddr)
 	if ok != true {
-		logrus.Error("using a different protocol to conect to MI")
+		logrus.Error("using non-UDP protocol to connect to MI")
 		return nil
 	}
 	c, err := net.DialUDP("udp", nil, miAddr)
@@ -164,7 +165,7 @@ func (conn *EventDatagramConn) Init(event *EventDatagram) (*EventDatagramConn) {
 
 	udpAddr, ok := c.LocalAddr().(*net.UDPAddr)
 	if ok != true {
-		logrus.Error("using a different protocol to conect to MI")
+		logrus.Error("using non-UDP local socket to connect to MI")
 		return nil
 	}
 

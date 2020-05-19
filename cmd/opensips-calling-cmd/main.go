@@ -16,8 +16,8 @@
 package main
 
 import (
-	"os"
 	"flag"
+	"os"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -51,7 +51,7 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	/* initilize logging */
+	/* initialize logging */
 	logfile, err := config.InitLogging(cfg)
 	if err != nil {
 		logrus.Fatal(err)

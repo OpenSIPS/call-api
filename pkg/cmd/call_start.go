@@ -16,9 +16,10 @@
 package cmd
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 	"strings"
+
 	"github.com/OpenSIPS/opensips-calling-api/pkg/event"
 	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
 )

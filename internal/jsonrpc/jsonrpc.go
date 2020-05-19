@@ -16,9 +16,9 @@
 package jsonrpc
 
 import (
+	"encoding/json"
 	"errors"
 	"strconv"
-	"encoding/json"
 )
 
 type JsonRPCRequest struct {

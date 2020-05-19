@@ -24,6 +24,9 @@ import (
 	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
 )
 
+const default_ws_host string = "localhost"
+const default_ws_port int = 5059
+
 var upgrader = websocket.Upgrader{} // use default options
 
 // JSON-RPC based, two-way communication over a long-lived WebSocket connection
@@ -59,18 +62,18 @@ func Run(cfg *config.Config) {
 	if cfg.WSServer.Host != "" {
 		host = cfg.WSServer.Host
 	} else {
-		host = "localhost"
+		host = default_ws_host
 	}
 
 	if cfg.WSServer.Port != 0 {
 		port = cfg.WSServer.Port
 	} else {
-		port = 5059
+		port = default_ws_port
 	}
 
 	http.HandleFunc("/ws", wsConnection)
 
 	listen := fmt.Sprintf("%s:%d", host, port)
-	logrus.Info("Listening for JSON-RPC over WebSocket on " + listen + " ...")
+	logrus.Infof("Listening for JSON-RPC over WebSocket on %s ...", listen)
 	logrus.Fatal(http.ListenAndServe(listen, nil))
 }

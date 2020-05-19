@@ -16,10 +16,11 @@
 package mi
 
 import (
-	"net"
-	"time"
-	"sync"
 	"errors"
+	"net"
+	"sync"
+	"time"
+
 	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
 )
 

@@ -17,6 +17,7 @@ package mi
 
 import (
 	"net"
+
 	"github.com/sirupsen/logrus"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
 	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
@@ -24,7 +25,7 @@ import (
 
 type MIreply func(response *jsonrpc.JsonRPCResponse)
 
-var default_url string = "127.0.0.1:8080"
+const default_url string = "127.0.0.1:8080"
 
 type MI interface {
 	Addr() (net.Addr)

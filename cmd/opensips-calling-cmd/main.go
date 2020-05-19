@@ -24,16 +24,7 @@ import (
 	"github.com/OpenSIPS/opensips-calling-api/pkg/cmd"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/proxy"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/ws_server"
 )
-
-/* used to simulate the Communication interface */
-type CmdConnection struct {}
-
-func (conn *CmdConnection) Notify(c *cmd.Cmd, notify interface{}) {
-	/* this connection simply outputs the results */
-	logrus.Printf("%s: %v", c.ID, notify)
-}
 
 func usage(prog string) {
 	logrus.Fatalf("Usage: %s command [arguments...]", prog)
@@ -71,8 +62,7 @@ func main() {
 	}
 	command := flag.Arg(0)
 	logrus.Debugf("Running command %s", command)
-	var conn ws_server.Connection = new(CmdConnection)
-	c := cmd.New(command, "", proxy, conn.Notify)
+	c := cmd.New(command, "", proxy)
 	if c == nil {
 		logrus.Fatalf("could not initialize %s command", command)
 	}
@@ -82,8 +72,14 @@ func main() {
 		arguments[param[0]] = strings.Join(param[1:], "=")
 	}
 	c.Run(arguments)
-	err = c.Wait()
-	if err != nil {
-		logrus.Fatal(err.Error())
+	for {
+		event := <-c.Wait()
+		if event == nil {
+			break
+		} else if event.IsError() {
+			logrus.Fatal(event.Error.Error())
+		} else {
+			logrus.Printf("%s: %v", c.ID, event.Event)
+		}
 	}
 }

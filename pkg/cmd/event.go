@@ -13,12 +13,21 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
-package ws_server
+package cmd
 
-import (
-	"github.com/OpenSIPS/opensips-calling-api/pkg/cmd"
-)
+type CmdEvent struct {
+	Error error
+	Event interface{}
+}
 
-type Connection interface {
-	Notify(cmd *cmd.Cmd, notify interface{})
+func NewError(err error) (c *CmdEvent) {
+	return &CmdEvent{Error: err}
+}
+
+func NewEvent(event interface{}) (c *CmdEvent) {
+	return &CmdEvent{Event: event}
+}
+
+func (c *CmdEvent) IsError() (bool) {
+	return c.Error != nil
 }

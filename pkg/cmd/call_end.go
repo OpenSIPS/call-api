@@ -16,14 +16,13 @@
 package cmd
 
 import (
-	"errors"
 )
 
 func (c *Cmd) CallEnd(params map[string]string) {
 
 	callid, ok := params["callid"]
 	if ok != true {
-		c.done <- errors.New("callid not specified")
+		c.NotifyNewError("callid not specified")
 		return
 	}
 
@@ -33,10 +32,10 @@ func (c *Cmd) CallEnd(params map[string]string) {
 
 	ret, err := c.proxy.MICallSync("dlg_end_dlg", &endParams)
 	if err != nil {
-		c.done <- err
+		c.NotifyError(err)
 	} else if ret.IsError() {
-		c.done <- ret.Error
+		c.NotifyError(ret.Error)
 	} else {
-		c.done <- nil
+		c.NotifyEnd()
 	}
 }

@@ -16,10 +16,8 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"strings"
-
 	"github.com/OpenSIPS/opensips-calling-api/pkg/event"
 	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
 )
@@ -28,10 +26,6 @@ type callStartCmd struct {
 	caller, callee, ruri, dlginfo string
 	sub event.Subscription
 	cmd *Cmd
-}
-
-func (cs *callStartCmd) returnError(err error) {
-	cs.cmd.done <- err
 }
 
 func (cs *callStartCmd) callStartEnd() {
@@ -49,18 +43,18 @@ func (cs *callStartCmd) callStartNotify(sub event.Subscription, notify *jsonrpc.
 
 	status, err := notify.GetString("status")
 	if err != nil {
-		cs.returnError(err)
+		cs.cmd.NotifyError(err)
 		return
 	}
-	cs.cmd.Notify("transfering status: " + status);
+	cs.cmd.NotifyEvent("transfering status: " + status);
 
 	switch status[0] {
 	case '1': /* provisional - all good */
 	case '2': /* transfer successful */
 		cs.callStartEnd()
-		cs.returnError(nil)
+		cs.cmd.NotifyEnd()
 	default:
-		cs.returnError(errors.New("Transfer failed with status " + status))
+		cs.cmd.NotifyNewError("Transfer failed with status " + status)
 	}
 }
 
@@ -68,42 +62,42 @@ func (cs *callStartCmd) callStartTransfer(response *jsonrpc.JsonRPCResponse) {
 
 	if response.IsError() {
 		cs.callStartEnd()
-		cs.returnError(response.Error)
+		cs.cmd.NotifyError(response.Error)
 		return
 	}
 
 	/* XXX: report 2 - call transferred */
-	cs.cmd.Notify("transfered to " + cs.callee);
+	cs.cmd.NotifyEvent("transfered to " + cs.callee);
 }
 
 
 func (cs *callStartCmd) callStartInitial(response *jsonrpc.JsonRPCResponse) {
 
 	if response.IsError() {
-		cs.returnError(response.Error)
+		cs.cmd.NotifyError(response.Error)
 		return
 	}
 
 	status, err := response.GetString("Status")
 	if err != nil {
-		cs.returnError(err)
+		cs.cmd.NotifyError(err)
 		return
 	}
 
 	if strings.Split(status, " ")[0] != "200" {
-		cs.returnError(errors.New("failed to establish initial call: " + status))
+		cs.cmd.NotifyNewError("failed to establish initial call: " + status)
 		return
 	}
 
 	cs.ruri, err = response.GetString("RURI")
 	if err != nil {
-		cs.returnError(err)
+		cs.cmd.NotifyError(err)
 		return
 	}
 
 	message, err := response.GetString("Message");
 	if err != nil {
-		cs.returnError(err)
+		cs.cmd.NotifyError(err)
 		return
 	}
 
@@ -116,7 +110,7 @@ func (cs *callStartCmd) callStartInitial(response *jsonrpc.JsonRPCResponse) {
 	}
 
 	/* XXX: report 1 - call answered */
-	cs.cmd.Notify("answered by " + cs.caller)
+	cs.cmd.NotifyEvent("answered by " + cs.caller)
 
 	var transferParams = map[string]string{
 		"callid": cs.cmd.ID,
@@ -130,7 +124,7 @@ func (cs *callStartCmd) callStartInitial(response *jsonrpc.JsonRPCResponse) {
 	err = cs.cmd.proxy.MICall("call_transfer", &transferParams, cs.callStartTransfer)
 	if err != nil {
 		cs.sub.Unsubscribe()
-		cs.returnError(err)
+		cs.cmd.NotifyError(err)
 		return
 	}
 }
@@ -154,12 +148,12 @@ func (c *Cmd) CallStart(params map[string]string) {
 
 	caller, ok := params["caller"]
 	if ok != true {
-		c.done <- errors.New("caller not specified")
+		c.NotifyNewError("caller not specified")
 		return
 	}
 	callee, ok := params["callee"]
 	if ok != true {
-		c.done <- errors.New("callee not specified")
+		c.NotifyNewError("callee not specified")
 		return
 	}
 
@@ -182,7 +176,7 @@ func (c *Cmd) CallStart(params map[string]string) {
 
 	err := c.proxy.MICall("t_uac_dlg", &inviteParams, cs.callStartInitial)
 	if err != nil {
-		c.done <- err
+		c.NotifyError(err)
 		return
 	}
 }

@@ -16,6 +16,7 @@
 package cmd
 
 import (
+	"errors"
 	"reflect"
 
 	"github.com/google/uuid"
@@ -30,18 +31,16 @@ type Cmd struct {
 	Command string
 
 	proxy *proxy.Proxy
-	notify Notify
-	done chan error
+	notify chan *CmdEvent
 	hdl reflect.Value
 }
 
-func New(command string, id string, p *proxy.Proxy, notify Notify) (c *Cmd) {
+func New(command string, id string, p *proxy.Proxy) (c *Cmd) {
 	c = &Cmd{
 		Command: command,
 		ID: id,
 		proxy: p,
-		notify: notify,
-		done: make(chan error, 1),
+		notify: make(chan *CmdEvent, 1),
 	}
 
 	if c.ID == "" {
@@ -60,17 +59,46 @@ func (c *Cmd) Run(params map[string]string) {
 	go c.hdl.Call(in)
 }
 
-func (c *Cmd) Wait() (error) {
+func (c *Cmd) Wait() (chan *CmdEvent) {
 
-	return <- c.done
+	return c.notify
 }
 
 func (c *Cmd) RunSync(params map[string]string) (error) {
 
 	c.Run(params)
-	return c.Wait()
+	for {
+		event := <-c.Wait()
+		if event == nil {
+			return nil
+		} else if event.IsError() {
+			return event.Error
+		}
+	}
 }
 
-func (c *Cmd) Notify(notify interface{}) {
-	c.notify(c, notify)
+/* Notify an arbitrary event */
+func (c *Cmd) Notify(ce *CmdEvent) {
+	c.notify <- ce
+}
+
+/* Notify an existing error - closes the channel */
+func (c *Cmd) NotifyError(err error) {
+	c.Notify(NewError(err))
+	close(c.notify)
+}
+
+/* Notify a new error - closes the channel */
+func (c *Cmd) NotifyNewError(err string ) {
+	c.Notify(NewError(errors.New(err)))
+}
+
+/* Notify an event */
+func (c *Cmd) NotifyEvent(event interface{}) {
+	c.Notify(NewEvent(event))
+}
+
+/* Notify the termination of the command handling */
+func (c *Cmd) NotifyEnd() {
+	close(c.notify)
 }

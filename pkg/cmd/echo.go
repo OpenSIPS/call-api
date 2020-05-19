@@ -16,6 +16,6 @@
 package cmd
 
 func (c *Cmd) Echo(params map[string]string) {
-	c.Notify(params)
-	c.done <- nil
+	c.NotifyEvent(params)
+	c.NotifyEnd()
 }

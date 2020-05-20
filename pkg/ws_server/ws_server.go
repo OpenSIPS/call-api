@@ -44,28 +44,7 @@ type WSCmdEvent struct {
 	event *cmd.CmdEvent
 }
 
-func (wsc *WSConnection) ReplyError(error_msg string) {
-	response := &jsonrpc.JsonRPCResponse{
-		JSONRPC: "2.0",
-		Error: &jsonrpc.JsonRPCError{
-			Code: 32000,
-			Message: error_msg,
-		},
-	}
-
-	message, err := json.Marshal(response)
-	if err != nil {
-		logrus.Error("failed to build JSON-RPC error")
-		return
-	}
-
-	err = wsc.conn.WriteMessage(websocket.TextMessage, message)
-	if err != nil {
-		logrus.Error("write: ", err)
-	}
-}
-
-func (wsc *WSConnection) ReplyErrorID(error_msg string, jsonrpc_id interface{}) {
+func (wsc *WSConnection) ReplyError(error_msg string, jsonrpc_id interface{}) {
 	response := &jsonrpc.JsonRPCResponse{
 		JSONRPC: "2.0",
 		ID: jsonrpc_id,
@@ -192,25 +171,25 @@ func wsConnection(w http.ResponseWriter, r *http.Request) {
 		req := &jsonrpc.JsonRPCRequest{}
 		err = req.Parse(message)
 		if err != nil {
-			wsc.ReplyError("failed to parse JSON-RPC request")
+			wsc.ReplyError("failed to parse JSON-RPC request", "")
 			continue
 		}
 
 		params, ok := req.Params.(map[string]interface{})
 		if !ok {
-			wsc.ReplyErrorID("non-object parameters are not accepted", req.ID)
+			wsc.ReplyError("non-object parameters are not accepted", req.ID)
 			continue
 		}
 
 		cmd_id, ok := params["cmd_id"].(string)
-		if cmd_id != "" && !ok {
-			wsc.ReplyErrorID("bad cmd_id: must be a string)", req.ID)
+		if !ok {
+			wsc.ReplyError("bad cmd_id (must be a string)", req.ID)
 			continue
 		}
 
 		c := cmd.New(req.Method, cmd_id, wsc.proxy)
 		if c == nil {
-			wsc.ReplyErrorID("unknown JSON-RPC method", req.ID)
+			wsc.ReplyError("unknown JSON-RPC method", req.ID)
 			continue
 		}
 
@@ -226,7 +205,7 @@ func wsConnection(w http.ResponseWriter, r *http.Request) {
 		// launch the Calling command to run asynchronously
 		err = c.Run(params)
 		if err != nil {
-			wsc.ReplyErrorID("bad JSON-RPC parameters", req.ID)
+			wsc.ReplyError("bad JSON-RPC parameters", req.ID)
 			continue
 		}
 

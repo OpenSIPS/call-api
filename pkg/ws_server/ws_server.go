@@ -72,7 +72,7 @@ func (wsc *WSConnection) ReplyOK(jsonrpc_id interface{}, cmd_id string) {
 		JSONRPC: "2.0",
 		ID: jsonrpc_id,
 		Result: &map[string]string {
-			"status": "ok",
+			"status": "Started",
 			"cmd_id": cmd_id,
 		},
 	}
@@ -98,25 +98,35 @@ func (wsc *WSConnection) pollWSConnection(agg chan *WSCmdEvent) {
 	for ev := range agg {
 		c := ev.cmd
 
-		logrus.Debugf("event on cmd %s (%s), event: %s\n", c.Command, c.ID, ev.event)
-
-		if ev.event.IsError() {
+		if ev.event == nil {
 			response = &jsonrpc.JsonRPCNotification{
 				JSONRPC: "2.0",
-				Method: "Error",
+				Method: "Ended",
 				Params: &map[string]interface{}{
 					"cmd_id": c.ID,
-					"error_msg": fmt.Sprintf("%s", ev.event.Error),
 				},
 			}
 		} else {
-			response = &jsonrpc.JsonRPCNotification{
-				JSONRPC: "2.0",
-				Method: "Event",
-				Params: &map[string]interface{}{
-					"cmd_id": c.ID,
-					"data": ev.event.Event,
-				},
+			logrus.Debugf("event on cmd %s (%s), event: %s", c.Command, c.ID, ev.event)
+
+			if ev.event.IsError() {
+				response = &jsonrpc.JsonRPCNotification{
+					JSONRPC: "2.0",
+					Method: "Error",
+					Params: &map[string]interface{}{
+						"cmd_id": c.ID,
+						"error_msg": fmt.Sprintf("%s", ev.event.Error),
+					},
+				}
+			} else {
+				response = &jsonrpc.JsonRPCNotification{
+					JSONRPC: "2.0",
+					Method: "Event",
+					Params: &map[string]interface{}{
+						"cmd_id": c.ID,
+						"data": ev.event.Event,
+					},
+				}
 			}
 		}
 
@@ -201,6 +211,7 @@ func wsConnection(w http.ResponseWriter, r *http.Request) {
 			}
 
 			logrus.Debugf("done reading events for cmd %s (%s)", c.Command, c.ID)
+			agg <- &WSCmdEvent{c, nil}
 		}(c)
 
 		// launch the Calling command to run asynchronously

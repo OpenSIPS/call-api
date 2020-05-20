@@ -58,11 +58,23 @@ func ParseClientArgs() (string, string, interface{}, string) {
 	if params != "" {
 		err = json.Unmarshal([]byte(params), &v)
 		if err != nil {
-			logrus.Fatalf("failed to parse JSON args: %s\n", err)
+			logrus.Fatalf("failed to parse JSON args: %s", err)
 		}
 	}
 
 	return cfgPath, method, v, id
+}
+
+func closeWSConnection(c *websocket.Conn) {
+
+	logrus.Info("gracefully closing connection...")
+
+	// Cleanly close the connection by sending a close message
+	err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	if err != nil {
+		logrus.Errorf("write close: %s", err)
+		return
+	}
 }
 
 func main() {
@@ -83,9 +95,6 @@ func main() {
 	if logfile != nil {
 		defer logfile.Close()
 	}
-
-	// prepare the JSON-RPC data
-	logrus.Debugf("cmd: %s, params: %s, id: %s\n", method, params, id)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
@@ -112,7 +121,22 @@ func main() {
 				logrus.Println("read:", err)
 				return
 			}
+
 			logrus.Printf("recv: %s", message)
+
+			var v interface{}
+
+			err = json.Unmarshal(message, &v)
+			if err != nil {
+				logrus.Println("failed to parse JSON reply: %s", err)
+				return
+			}
+
+			method := v.(map[string]interface{})["method"]
+			if method == "Ended" {
+				closeWSConnection(c)
+				return
+			}
 		}
 	}()
 
@@ -127,6 +151,7 @@ func main() {
 	if err != nil {
 		logrus.Fatal("write:", err)
 	}
+	logrus.Infof("send: %s", buf)
 
 	// ... and send it!
 	err = c.WriteMessage(websocket.TextMessage, buf)
@@ -139,18 +164,13 @@ func main() {
 		return
 	case <-interrupt:
 		logrus.Println("interrupt")
+		closeWSConnection(c)
 
-		// Cleanly close the connection by sending a close message and then
-		// waiting (with timeout) for the server to close the connection.
-		err = c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-		if err != nil {
-			logrus.Println("write close:", err)
-			return
-		}
+		// wait (with timeout) for the server to close the connection
 		select {
 		case <-done:
 		case <-time.After(time.Second):
 		}
-		return
 	}
+
 }

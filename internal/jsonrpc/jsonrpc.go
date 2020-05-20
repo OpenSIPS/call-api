@@ -56,7 +56,7 @@ func (err *JsonRPCError) Error() (string) {
 func NewRequest(id interface{}, method string, params interface{}) (*JsonRPCRequest) {
 	if _, ok := id.(uint64); !ok {
 		if _, ok := id.(string); !ok {
-			logrus.Errorf("unsupported ID type, must be uint64 or string: %s\n", id)
+			logrus.Errorf("unsupported ID type, must be uint64 or string: %s", id)
 			return nil
 		}
 	}

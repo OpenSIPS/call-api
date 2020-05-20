@@ -31,6 +31,7 @@ type Config struct {
 	WSServer struct {
 		Host string `yaml:"host,omitempty"`
 		Port int `yaml:"port,omitempty"`
+		Path string `yaml:"http_path,omitempty"`
 	} `yaml:"ws_server"`
 
 	Log struct {

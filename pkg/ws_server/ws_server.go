@@ -30,6 +30,7 @@ import (
 
 const default_ws_host string = "localhost"
 const default_ws_port int = 5059
+const default_ws_path string = "/calling-api"
 
 var upgrader = websocket.Upgrader{} // use default options
 var Cfg *config.Config
@@ -218,7 +219,7 @@ func wsConnection(w http.ResponseWriter, r *http.Request) {
 }
 
 func Run(cfg *config.Config) {
-	var host string
+	var host, path string
 	var port int
 	Cfg = cfg
 
@@ -234,9 +235,15 @@ func Run(cfg *config.Config) {
 		port = default_ws_port
 	}
 
-	http.HandleFunc("/ws", wsConnection)
+	if cfg.WSServer.Path != "" {
+		path = cfg.WSServer.Path
+	} else {
+		path = default_ws_path
+	}
+
+	http.HandleFunc(path, wsConnection)
 
 	listen := fmt.Sprintf("%s:%d", host, port)
-	logrus.Infof("Listening for JSON-RPC over WebSocket on %s ...", listen)
+	logrus.Infof("Listening for JSON-RPC over WebSocket on %s%s ...", listen, path)
 	logrus.Fatal(http.ListenAndServe(listen, nil))
 }

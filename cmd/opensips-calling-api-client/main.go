@@ -91,7 +91,7 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	api_hostport := fmt.Sprintf("%s:%d", cfg.WSServer.Host, cfg.WSServer.Port)
-	u := url.URL{Scheme: "ws", Host: api_hostport, Path: "/ws"}
+	u := url.URL{Scheme: "ws", Host: api_hostport, Path: cfg.WSServer.Path}
 	logrus.Printf("connecting to %s", u.String())
 
 	// open a single WebSocket connection

@@ -10,6 +10,8 @@ ws_server:
   # the local machine TCP port to bind the API to
   port: 5059
 
+  # the HTTP endpoint which accepts WebSocket connections
+  http_path: /calling-api
 
 # logging configuration (by default, the API logs to stderr)
 log:

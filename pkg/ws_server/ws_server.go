@@ -39,6 +39,11 @@ type WSConnection struct {
 	proxy *proxy.Proxy // two-way UDP connection to a SIP proxy
 }
 
+type WSCmdEvent struct {
+	cmd *cmd.Cmd
+	event *cmd.CmdEvent
+}
+
 func (wsc *WSConnection) ReplyError(error_msg string) {
 	response := &jsonrpc.JsonRPCResponse{
 		JSONRPC: "2.0",
@@ -56,7 +61,7 @@ func (wsc *WSConnection) ReplyError(error_msg string) {
 
 	err = wsc.conn.WriteMessage(websocket.TextMessage, message)
 	if err != nil {
-		logrus.Println("write:", err)
+		logrus.Error("write: ", err)
 	}
 }
 
@@ -78,7 +83,7 @@ func (wsc *WSConnection) ReplyErrorID(error_msg string, jsonrpc_id interface{}) 
 
 	err = wsc.conn.WriteMessage(websocket.TextMessage, message)
 	if err != nil {
-		logrus.Println("write:", err)
+		logrus.Error("write: ", err)
 	}
 }
 
@@ -100,7 +105,52 @@ func (wsc *WSConnection) ReplyOK(jsonrpc_id interface{}, cmd_id string) {
 
 	err = wsc.conn.WriteMessage(websocket.TextMessage, message)
 	if err != nil {
-		logrus.Println("write:", err)
+		logrus.Error("write: ", err)
+	}
+}
+
+// wait for random OpenSIPS MI events on a given WebSocket connection,
+// possibly from multiple Call Commands running concurrently, and forward them
+// to the WebSocket client as JSON-RPC Notifications
+func (wsc *WSConnection) pollWSConnection(agg chan *WSCmdEvent) {
+	var response *jsonrpc.JsonRPCNotification
+
+	for ev := range agg {
+		c := ev.cmd
+
+		logrus.Debugf("event on cmd %s (%s), event: %s\n", c.Command, c.ID, ev.event)
+
+		if ev.event.IsError() {
+			response = &jsonrpc.JsonRPCNotification{
+				JSONRPC: "2.0",
+				Method: "Error",
+				Params: &map[string]interface{}{
+					"cmd_id": c.ID,
+					"error_msg": fmt.Sprintf("%s", ev.event.Error),
+				},
+			}
+		} else {
+			response = &jsonrpc.JsonRPCNotification{
+				JSONRPC: "2.0",
+				Method: "Event",
+				Params: &map[string]interface{}{
+					"cmd_id": c.ID,
+					"data": ev.event.Event,
+				},
+			}
+		}
+
+		message, err := json.Marshal(response)
+		if err != nil {
+			logrus.Errorf("cmd %s (%s): failed to build JSON notification: %s",
+						  c.Command, c.ID, ev.event)
+			return
+		}
+
+		err = wsc.conn.WriteMessage(websocket.TextMessage, message)
+		if err != nil {
+			logrus.Error("write: ", err)
+		}
 	}
 }
 
@@ -125,13 +175,18 @@ func wsConnection(w http.ResponseWriter, r *http.Request) {
 		logrus.Fatal("could not initialize SIP proxy")
 	}
 
+	agg := make(chan *WSCmdEvent)
+
+	go wsc.pollWSConnection(agg)
+
 	for {
 		_, message, err := wsc.conn.ReadMessage()
 		if err != nil {
-			logrus.Println("read:", err)
+			logrus.Info("read: ", err)
 			break
 		}
-		logrus.Printf("recv: %s", message)
+
+		logrus.Infof("recv: %s", message)
 
 		// validate the incoming JSON-RPC query
 		req := &jsonrpc.JsonRPCRequest{}
@@ -159,7 +214,17 @@ func wsConnection(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		err = c.Run(params) // async
+		// we expect to receive at least a close on this command's channel
+		go func(c *cmd.Cmd) {
+			for event := range c.Wait() {
+				agg <- &WSCmdEvent{c, event}
+			}
+
+			logrus.Debugf("done reading events for cmd %s (%s)", c.Command, c.ID)
+		}(c)
+
+		// launch the Calling command to run asynchronously
+		err = c.Run(params)
 		if err != nil {
 			wsc.ReplyErrorID("bad JSON-RPC parameters", req.ID)
 			continue
@@ -168,6 +233,9 @@ func wsConnection(w http.ResponseWriter, r *http.Request) {
 		// indicate that we've successfully launched the command
 		wsc.ReplyOK(req.ID, c.ID)
 	}
+
+	close(agg)
+	logrus.Debugf("closed connection from %s", r.RemoteAddr)
 }
 
 func Run(cfg *config.Config) {

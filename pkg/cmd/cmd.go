@@ -30,9 +30,9 @@ type Notify func(cmd *Cmd, notify interface{})
 type Cmd struct {
 	ID string
 	Command string
-	notify chan *CmdEvent
 
 	proxy *proxy.Proxy
+	notify chan *CmdEvent
 	hdl reflect.Value
 }
 

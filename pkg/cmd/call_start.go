@@ -41,20 +41,30 @@ func (cs *callStartCmd) callStartEnd() {
 
 func (cs *callStartCmd) callStartNotify(sub event.Subscription, notify *jsonrpc.JsonRPCNotification) {
 
+	state, err := notify.GetString("state")
+	if err != nil {
+		cs.cmd.NotifyError(err)
+		return
+	}
+
 	status, err := notify.GetString("status")
 	if err != nil {
 		cs.cmd.NotifyError(err)
 		return
 	}
-	cs.cmd.NotifyEvent("transfering status: " + status);
+	message := "transfering state: " + state
+	if len(status) > 0 {
+		message += " (status=" + status + ")"
+	}
+	cs.cmd.NotifyEvent(message)
 
-	switch status[0] {
-	case '1': /* provisional - all good */
-	case '2': /* transfer successful */
+	switch state {
+	case "failure":
+		cs.cmd.NotifyNewError("transfer failed with status " + status)
+	case "ok":
 		cs.callStartEnd()
 		cs.cmd.NotifyEnd()
 	default:
-		cs.cmd.NotifyNewError("Transfer failed with status " + status)
 	}
 }
 

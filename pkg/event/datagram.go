@@ -280,7 +280,7 @@ func (event *EventDatagram) Subscribe(ev string, notify EventNotification) (Subs
 	}
 	_, err := event.mi.CallSync("event_subscribe", &eviParams);
 	if err != nil {
-		logrus.Error("could not subscribe for event " + ev)
+		logrus.Error("could not subscribe for event " + ev + ": " + err.Error())
 		sub.Unsubscribe()
 		return nil
 	}

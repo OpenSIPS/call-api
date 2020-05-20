@@ -32,6 +32,7 @@ type EventDatagramSub struct {
 	event string
 	conn *EventDatagramConn
 	notify EventNotification
+	subscribed bool
 }
 
 func (sub *EventDatagramSub) String() (string) {
@@ -45,6 +46,18 @@ func (sub *EventDatagramSub) Event() (string) {
 func (sub *EventDatagramSub) Unsubscribe() {
 	logrus.Debug("unsubscribing event " + sub.event + " from " + sub.conn.String())
 	sub.conn.Unsubscribe(sub)
+}
+
+func (sub *EventDatagramSub) IsSubscribed() (bool) {
+	return sub.subscribed
+}
+
+func (sub *EventDatagramSub) setSubscribed() {
+	sub.subscribed = true
+}
+
+func (sub *EventDatagramSub) setUnsubscribed() {
+	sub.subscribed = false
 }
 
 
@@ -133,7 +146,11 @@ func (conn *EventDatagramConn) Unsubscribe(sub *EventDatagramSub) {
 	conn.lock.Unlock()
 
 	// inform the go routine it is no longer necessary to wait for events
-	conn.wake <- nil
+	close(conn.wake)
+
+	if !sub.IsSubscribed() {
+		return
+	}
 
 	// unsubscribe from the event
 	/* we've got the connection - let us subscribe */
@@ -145,6 +162,8 @@ func (conn *EventDatagramConn) Unsubscribe(sub *EventDatagramSub) {
 	_, err := conn.handler.mi.CallSync("event_subscribe", &eviParams);
 	if err != nil {
 		logrus.Error("could not unsubscribe for event " + sub.Event() + " " + err.Error())
+	} else {
+		sub.setUnsubscribed()
 	}
 
 }
@@ -265,6 +284,7 @@ func (event *EventDatagram) Subscribe(ev string, notify EventNotification) (Subs
 		sub.Unsubscribe()
 		return nil
 	}
+	sub.setSubscribed()
 
 	logrus.Debug("subscribed " + sub.Event() + " at " + sub.String())
 	return sub

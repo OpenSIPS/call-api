@@ -27,6 +27,7 @@ type Subscription interface {
 	Event() (string)
 	String() (string)
 	Unsubscribe()
+	IsSubscribed() (bool)
 }
 
 type Event interface {

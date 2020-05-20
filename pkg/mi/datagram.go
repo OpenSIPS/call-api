@@ -69,8 +69,14 @@ func (mi *MIDatagram) getReply(currentId uint64, fn MIreply) {
 		return
 	}
 
-	if reply.ID != currentId {
-		mi.done <- errors.New("id mismatch")
+	replyId, ok := reply.ID.(float64)
+	if !ok {
+		mi.done <- errors.New("id type error")
+		return
+	}
+
+	if uint64(replyId) != currentId {
+		mi.done <- errors.New("id mismatch %d")
 		return
 	}
 

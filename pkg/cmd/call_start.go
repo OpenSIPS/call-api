@@ -130,6 +130,10 @@ func (cs *callStartCmd) callStartInitial(response *jsonrpc.JsonRPCResponse) {
 
 	/* before transfering, register for new blind transfer events */
 	cs.sub = cs.cmd.proxy.Subscribe("E_CALL_BLIND_TRANSFER", cs.callStartNotify)
+	if cs.sub == nil {
+		cs.cmd.NotifyNewError("Could not subscribe for event")
+		return
+	}
 
 	err = cs.cmd.proxy.MICall("call_transfer", &transferParams, cs.callStartTransfer)
 	if err != nil {

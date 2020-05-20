@@ -18,10 +18,10 @@ package cmd
 import (
 )
 
-func (c *Cmd) CallEnd(params map[string]string) {
+func (c *Cmd) CallEnd(params map[string]interface{}) {
 
-	callid, ok := params["callid"]
-	if ok != true {
+	callid, ok := params["callid"].(string)
+	if !ok {
 		c.NotifyNewError("callid not specified")
 		return
 	}

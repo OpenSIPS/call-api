@@ -129,7 +129,7 @@ func (cs *callStartCmd) callStartInitial(response *jsonrpc.JsonRPCResponse) {
 	}
 }
 
-func (c *Cmd) CallStart(params map[string]string) {
+func (c *Cmd) CallStart(params map[string]interface{}) {
 
 	const headersFormat = "From: <%s>\r\n" +
 		"To: <%s>\r\n" +
@@ -146,13 +146,13 @@ func (c *Cmd) CallStart(params map[string]string) {
 		"m=audio 9 RTP/AVP 0\r\n" +
 		"a=rtpmap:0 PCMU/8000\r\n"
 
-	caller, ok := params["caller"]
-	if ok != true {
+	caller, ok := params["caller"].(string)
+	if !ok {
 		c.NotifyNewError("caller not specified")
 		return
 	}
-	callee, ok := params["callee"]
-	if ok != true {
+	callee, ok := params["callee"].(string)
+	if !ok {
 		c.NotifyNewError("callee not specified")
 		return
 	}

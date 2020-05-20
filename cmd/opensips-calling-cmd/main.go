@@ -66,7 +66,7 @@ func main() {
 	if c == nil {
 		logrus.Fatalf("could not initialize %s command", command)
 	}
-	var arguments = map[string]string{}
+	var arguments = map[string]interface{}{}
 	for _, arg := range flag.Args()[1:] {
 		param := strings.Split(arg, "=")
 		arguments[param[0]] = strings.Join(param[1:], "=")

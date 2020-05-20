@@ -19,18 +19,20 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+
+	"github.com/sirupsen/logrus"
 )
 
 type JsonRPCRequest struct {
 	JSONRPC string                 `json:"jsonrpc"`
-	ID      uint64                 `json:"id"`
+	ID      interface{}            `json:"id"`
 	Method  string                 `json:"method"`
 	Params  interface{}            `json:"params,omitempty"`
 }
 
 type JsonRPCResponse struct {
 	JSONRPC string                 `json:"jsonrpc"`
-	ID      uint64                 `json:"id"`
+	ID      interface{}            `json:"id"`
 	Result  interface{}            `json:"result,omitempty"`
 	Error   *JsonRPCError          `json:"error,omitempty"`
 }
@@ -51,7 +53,14 @@ func (err *JsonRPCError) Error() (string) {
 	return strconv.Itoa(err.Code) + " " + err.Message
 }
 
-func NewRequest(id uint64, method string, params interface{}) (*JsonRPCRequest) {
+func NewRequest(id interface{}, method string, params interface{}) (*JsonRPCRequest) {
+	if _, ok := id.(uint64); !ok {
+		if _, ok := id.(string); !ok {
+			logrus.Errorf("unsupported ID type, must be uint64 or string: %s\n", id)
+			return nil
+		}
+	}
+
 	req := &JsonRPCRequest{
 		JSONRPC: "2.0",
 		ID: id,
@@ -73,9 +82,11 @@ func NewNotification(method string, params interface{}) (*JsonRPCNotification) {
 func (request *JsonRPCRequest) Buffer() ([]byte, error) {
 	return json.Marshal(request)
 }
+func (request *JsonRPCRequest) Parse(bytes []byte) (error) {
+	return json.Unmarshal(bytes, request)
+}
 
 func (reply *JsonRPCResponse) Parse(bytes []byte) (error) {
-
 	return json.Unmarshal(bytes, reply)
 }
 

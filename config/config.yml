@@ -17,4 +17,4 @@ log:
   #file_path: /var/log/opensips-calling-api.log
 
   # possible levels: DEBUG, INFO, WARN, ERROR
-  level: INFO
+  level: DEBUG

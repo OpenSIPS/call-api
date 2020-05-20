@@ -15,7 +15,7 @@
 
 package cmd
 
-func (c *Cmd) Echo(params map[string]string) {
+func (c *Cmd) Echo(params map[string]interface{}) {
 	c.NotifyEvent(params)
 	c.NotifyEnd()
 }

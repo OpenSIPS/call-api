@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 
 	"github.com/google/uuid"
@@ -29,9 +30,9 @@ type Notify func(cmd *Cmd, notify interface{})
 type Cmd struct {
 	ID string
 	Command string
+	notify chan *CmdEvent
 
 	proxy *proxy.Proxy
-	notify chan *CmdEvent
 	hdl reflect.Value
 }
 
@@ -54,9 +55,18 @@ func New(command string, id string, p *proxy.Proxy) (c *Cmd) {
 	return c
 }
 
-func (c *Cmd) Run(params map[string]string) {
+func (c *Cmd) Run(params map[string]interface{}) (err error) {
+	// TODO: remove this check once non-strings are handled under the hood
+	for key := range params {
+		if _, ok := params[key].(string); !ok {
+			err = fmt.Errorf("non-string parameter values are not yet supported")
+			return
+		}
+	}
+
 	in := []reflect.Value{reflect.ValueOf(params)}
 	go c.hdl.Call(in)
+	return
 }
 
 func (c *Cmd) Wait() (chan *CmdEvent) {
@@ -64,7 +74,7 @@ func (c *Cmd) Wait() (chan *CmdEvent) {
 	return c.notify
 }
 
-func (c *Cmd) RunSync(params map[string]string) (error) {
+func (c *Cmd) RunSync(params map[string]interface{}) (error) {
 
 	c.Run(params)
 	for {

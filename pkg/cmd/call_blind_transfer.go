@@ -64,20 +64,20 @@ func (cb *callBlindTransferCmd) callBlindTransferReply(response *jsonrpc.JsonRPC
 	cb.cmd.NotifyEvent("transfered to " + cb.dst)
 }
 
-func (c *Cmd) CallBlindTransfer(params map[string]string) {
+func (c *Cmd) CallBlindTransfer(params map[string]interface{}) {
 
-	callid, ok := params["callid"]
-	if ok != true {
+	callid, ok := params["callid"].(string)
+	if !ok {
 		c.NotifyNewError("callid not specified")
 		return
 	}
-	leg, ok := params["leg"]
-	if ok != true {
+	leg, ok := params["leg"].(string)
+	if !ok {
 		c.NotifyNewError("leg not specified")
 		return
 	}
-	destination, ok := params["destination"]
-	if ok != true {
+	destination, ok := params["destination"].(string)
+	if !ok {
 		c.NotifyNewError("destination not specified")
 		return
 	}

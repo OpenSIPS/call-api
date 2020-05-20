@@ -18,6 +18,8 @@
 package main
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
 	"net/url"
 	"os"
@@ -27,14 +29,45 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
+	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
 )
 
-func main() {
-	// parse cmdline args
+func usage(prog string) {
+	logrus.Fatalf("Usage: %s jsonrpc_method [jsonrpc_arguments]", prog)
+}
+
+func ParseClientArgs() (string, string, interface{}, string) {
+	var method, params, id string
+
+	flag.StringVar(&method, "method", "", "JSON-RPC method")
+	flag.StringVar(&params, "params", "", "JSON-RPC params")
+	flag.StringVar(&id, "id", "", "JSON-RPC id")
+
 	cfgPath, err := config.ParseFlags("config")
 	if err != nil {
 		logrus.Fatal(err)
 	}
+
+	if method == "" {
+		logrus.Error("no method specified!")
+		usage(os.Args[0])
+	}
+
+	var v interface{}
+
+	if params != "" {
+		err = json.Unmarshal([]byte(params), &v)
+		if err != nil {
+			logrus.Fatalf("failed to parse JSON args: %s\n", err)
+		}
+	}
+
+	return cfgPath, method, v, id
+}
+
+func main() {
+	// parse cmdline args
+	cfgPath, method, params, id := ParseClientArgs()
 
 	// read configuration
 	cfg, err := config.NewConfig(cfgPath)
@@ -51,13 +84,17 @@ func main() {
 		defer logfile.Close()
 	}
 
+	// prepare the JSON-RPC data
+	logrus.Debugf("cmd: %s, params: %s, id: %s\n", method, params, id)
+
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	listen := fmt.Sprintf("%s:%d", cfg.WSServer.Host, cfg.WSServer.Port)
-	u := url.URL{Scheme: "ws", Host: listen, Path: "/ws"}
+	api_hostport := fmt.Sprintf("%s:%d", cfg.WSServer.Host, cfg.WSServer.Port)
+	u := url.URL{Scheme: "ws", Host: api_hostport, Path: "/ws"}
 	logrus.Printf("connecting to %s", u.String())
 
+	// open a single WebSocket connection
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		logrus.Fatal("dial:", err)
@@ -66,6 +103,7 @@ func main() {
 
 	done := make(chan struct{})
 
+	// keep listening for messages until EOF
 	go func() {
 		defer close(done)
 		for {
@@ -78,34 +116,41 @@ func main() {
 		}
 	}()
 
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
+	// create a JSON-RPC request
+	req := jsonrpc.NewRequest(id, method, params)
+	if req == nil {
+		logrus.Fatal("failed to create JSON-RPC request")
+	}
 
-	for {
-		select {
-		case <-done:
-			return
-		case t := <-ticker.C:
-			err := c.WriteMessage(websocket.TextMessage, []byte(t.String()))
-			if err != nil {
-				logrus.Println("write:", err)
-				return
-			}
-		case <-interrupt:
-			logrus.Println("interrupt")
+	// ... serialize it
+	buf, err := req.Buffer()
+	if err != nil {
+		logrus.Fatal("write:", err)
+	}
 
-			// Cleanly close the connection by sending a close message and then
-			// waiting (with timeout) for the server to close the connection.
-			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			if err != nil {
-				logrus.Println("write close:", err)
-				return
-			}
-			select {
-			case <-done:
-			case <-time.After(time.Second):
-			}
+	// ... and send it!
+	err = c.WriteMessage(websocket.TextMessage, buf)
+	if err != nil {
+		logrus.Fatal("write:", err)
+	}
+
+	select {
+	case <-done:
+		return
+	case <-interrupt:
+		logrus.Println("interrupt")
+
+		// Cleanly close the connection by sending a close message and then
+		// waiting (with timeout) for the server to close the connection.
+		err = c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		if err != nil {
+			logrus.Println("write close:", err)
 			return
 		}
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+		}
+		return
 	}
 }

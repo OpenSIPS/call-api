@@ -14,6 +14,11 @@ ws_server:
   http_path: /calling-api
 
 
+# properties for the MI communication
+mi:
+  url: 127.0.0.1:8080
+
+
 # logging configuration (by default, the API logs to stderr)
 log:
   # absolute path

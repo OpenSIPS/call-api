@@ -34,7 +34,7 @@ go run cmd/opensips-calling-api-client/main.go \
 
 ## JSON-RPC Method Documentation
 
-Once a WebSocket channel is established between the client and the API, communication will take place strictly using JSON messages, following the JSON-RPC 
+Once a WebSocket channel is established between the client and the API, communication will take place strictly using JSON messages which follow the JSON-RPC 2.0 request/response/notification protocol.  Note that API _clients are expected to process notifications_ from the API, while their launched commands are being handled asynchronously by OpenSIPS.
 
 ### CallStart
 

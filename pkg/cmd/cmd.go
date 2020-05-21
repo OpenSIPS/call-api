@@ -101,6 +101,7 @@ func (c *Cmd) NotifyError(err error) {
 /* Notify a new error - closes the channel */
 func (c *Cmd) NotifyNewError(err string ) {
 	c.Notify(NewError(errors.New(err)))
+	close(c.notify)
 }
 
 /* Notify an event */

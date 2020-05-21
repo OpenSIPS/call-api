@@ -82,7 +82,9 @@ func (mi *MIDatagram) getReply(currentId uint64, fn MIreply) {
 		return
 	}
 
-	fn(reply)
+	if fn != nil {
+		fn(reply)
+	}
 	mi.done <- nil
 }
 

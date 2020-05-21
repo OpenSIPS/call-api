@@ -101,18 +101,8 @@ func (conn *EventDatagramConn) waitForEvents() {
 	for {
 		select {
 		case <-conn.wake:
-			/* if there are no other subscribers, terminate the execution */
-			conn.handler.lock.Lock()
-			conn.lock.RLock()
-			if len(conn.subs) == 0 {
-				conn.lock.RUnlock()
-				conn.handler.lock.Unlock()
-				logrus.Info("closing connection " + conn.String())
-				close(conn.wake)
-				return
-			}
-			conn.lock.RUnlock()
-			conn.handler.lock.Unlock()
+			conn.handler.RemoveConn(conn)
+			return
 		default:
 			r, _, err := conn.udp.ReadFrom(buffer)
 			if err == nil {
@@ -145,10 +135,12 @@ func (conn *EventDatagramConn) Unsubscribe(sub *EventDatagramSub) {
 			break
 		}
 	}
+	if len(conn.subs) == 0 {
+		// inform the go routine it is no longer necessary to wait for events
+		logrus.Info("closing connection " + conn.String())
+		close(conn.wake)
+	}
 	conn.lock.Unlock()
-
-	// inform the go routine it is no longer necessary to wait for events
-	close(conn.wake)
 
 	if !sub.IsSubscribed() {
 		return
@@ -294,4 +286,16 @@ func (event *EventDatagram) Subscribe(ev string, notify EventNotification) (Subs
 
 func (event *EventDatagram) Close() {
 	logrus.Debug("closing datagram handler")
+}
+
+func (event *EventDatagram) RemoveConn(conn *EventDatagramConn) {
+	event.lock.Lock()
+	for i, c := range event.conns {
+		if conn == c {
+			logrus.Info("removing connection " + conn.String())
+			event.conns = append(event.conns[0:i], event.conns[i+1:]...)
+			break;
+		}
+	}
+	event.lock.Unlock()
 }

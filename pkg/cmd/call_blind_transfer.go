@@ -102,7 +102,7 @@ func (c *Cmd) CallBlindTransfer(params map[string]interface{}) {
 	}
 
 	/* before transfering, register for new blind transfer events */
-	cb.sub = c.proxy.Subscribe("E_CALL_BLIND_TRANSFER", cb.callBlindTransferNotify)
+	cb.sub = c.proxy.Subscribe("E_CALL_TRANSFER", cb.callBlindTransferNotify)
 	if cb.sub == nil {
 		c.NotifyNewError("Could not subscribe for event")
 		return

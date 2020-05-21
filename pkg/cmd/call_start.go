@@ -54,11 +54,7 @@ func (cs *callStartCmd) callStartNotify(sub event.Subscription, notify *jsonrpc.
 		cs.cmd.NotifyError(err)
 		return
 	}
-	message := "transfering state: " + state
-	if len(status) > 0 {
-		message += " (status=" + status + ")"
-	}
-	cs.cmd.NotifyEvent(message)
+	cs.cmd.NotifyEvent(notify.Params)
 
 	switch state {
 	case "failure":

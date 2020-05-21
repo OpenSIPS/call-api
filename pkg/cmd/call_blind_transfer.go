@@ -49,7 +49,7 @@ func (cb *callBlindTransferCmd) callBlindTransferNotify(sub event.Subscription, 
 		cb.cmd.NotifyError(err)
 		return
 	}
-	cb.cmd.NotifyEvent("transfering status: " + status);
+	cb.cmd.NotifyEvent(notify.Params)
 
 	switch state {
 	case "ok":

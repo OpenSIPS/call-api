@@ -37,6 +37,13 @@ func (cb *callBlindTransferCmd) callBlindTransferEnd() {
 }
 
 func (cb *callBlindTransferCmd) callBlindTransferNotify(sub event.Subscription, notify *jsonrpc.JsonRPCNotification) {
+
+	state, err := notify.GetString("state")
+	if err != nil {
+		cb.cmd.NotifyError(err)
+		return
+	}
+
 	status, err := notify.GetString("status")
 	if err != nil {
 		cb.cmd.NotifyError(err)
@@ -44,12 +51,11 @@ func (cb *callBlindTransferCmd) callBlindTransferNotify(sub event.Subscription, 
 	}
 	cb.cmd.NotifyEvent("transfering status: " + status);
 
-	switch status[0] {
-	case '1': /* provisional - all good */
-	case '2': /* transfer successful */
+	switch state {
+	case "ok":
 		cb.callBlindTransferEnd()
 		cb.cmd.NotifyEnd()
-	default:
+	case "failure":
 		cb.cmd.NotifyNewError("Transfer failed with status " + status)
 	}
 }

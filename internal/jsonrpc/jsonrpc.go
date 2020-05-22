@@ -92,6 +92,10 @@ func (reply *JsonRPCResponse) Parse(bytes []byte) (error) {
 	return json.Unmarshal(bytes, reply)
 }
 
+func (reply *JsonRPCNotification) Parse(bytes []byte) (error) {
+	return json.Unmarshal(bytes, reply)
+}
+
 func (reply *JsonRPCResponse) IsError() (bool) {
 	return reply.Error != nil
 }

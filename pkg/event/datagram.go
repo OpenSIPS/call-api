@@ -18,9 +18,7 @@
 package event
 
 import (
-	"errors"
 	"net"
-	"strings"
 	"sync"
 	"syscall"
 
@@ -72,29 +70,6 @@ type EventDatagramConn struct {
 	handler *EventDatagram
 }
 
-func (conn *EventDatagramConn) parse(result string) (*jsonrpc.JsonRPCNotification, error) {
-
-	split := strings.Split(result, "\n")
-	if len(split) < 1 || len(split[0]) < 1 {
-		return nil, errors.New("no event specified")
-	}
-	event := split[0]
-	ret := make(map[string]interface{})
-	for _, line := range split[1:] {
-		if len(line) == 0 {
-			break
-		}
-		lineSplit := strings.Split(line, "::")
-		if len(lineSplit) > 1 {
-			ret[lineSplit[0]] = strings.Join(lineSplit[1:], "::")
-		} else {
-			ret[line] = nil
-		}
-	}
-
-	return jsonrpc.NewNotification(event, ret), nil
-}
-
 func (conn *EventDatagramConn) waitForEvents() {
 
 	buffer := make([]byte, 65535)
@@ -106,7 +81,8 @@ func (conn *EventDatagramConn) waitForEvents() {
 		default:
 			r, _, err := conn.udp.ReadFrom(buffer)
 			if err == nil {
-				result, err := conn.parse(string(buffer[0:r]))
+				result := &jsonrpc.JsonRPCNotification{}
+				err = result.Parse(buffer[0:r])
 				if err != nil {
 					logrus.Error("could not parse notification: " + err.Error())
 				} else {

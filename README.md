@@ -1,15 +1,17 @@
-# OpenSIPS Calling API
+# Call API
 
 ----
 
-The OpenSIPS Calling API is a front-end layer for managing more advanced SIP call flows.  Combining built-in SIP scenarios (such as the ones from [RFC 5359](https://tools.ietf.org/html/rfc5359)) with real-time notifications as the call commands take place, the API is meant to help VoIP system developers build complex SIP services with ease, altogether while providing live reporting for such services.
+The Call API is a front-end layer for SIP Proxies (such as [OpenSIPS](www.opensips.org)) managing more advanced SIP call flows. Combining built-in SIP scenarios (such as the ones from [RFC 5359](https://tools.ietf.org/html/rfc5359)) with real-time notifications as the call commands take place, the API is meant to help VoIP system developers build complex SIP services with ease, altogether while providing live reporting for such services.
 
 The API listens for [WebSocket](https://en.wikipedia.org/wiki/WebSocket) connections on `ws://localhost:5059/calling-api` and talks [JSON-RPC 2.0](https://www.jsonrpc.org/specification) over them.
 
 ## Installation
 
-    go get github.com/opensips/opensips-calling-api
-    TODO
+```
+    go get github.com/OpenSIPS/call-api
+```
+** TODO **
 
 ## API Call Commands
 
@@ -24,17 +26,17 @@ Below are the API's commands available for building your JSON-RPC requests.  Rea
 
 ## Interacting with the API
 
-By default, the API listens on `ws://localhost:5059/calling-api`.  Below is an example way of launching a `CallStart` command using an [API client written in Go](https://github.com/opensips/opensips-calling-api/blob/master/cmd/opensips-calling-api-client/main.go):
+By default, the API listens on `ws://localhost:5059/calling-api`.  Below is an example way of launching a `CallStart` command using an [API client written in Go](cmd/call-api-client/main.go):
 
 ```
-go run cmd/opensips-calling-api-client/main.go \
+go run cmd/call-api-client/main.go \
   -method CallStart \
   -params '{"caller": "sip:alice@localhost", "callee": "sip:bob@localhost"}'
 ```
 
 ## JSON-RPC Method Documentation
 
-Once a WebSocket channel is established between the client and the API, communication will take place strictly using JSON messages which follow the JSON-RPC 2.0 request/response/notification protocol.  Note that API _clients are expected to process notifications_ from the API, while their launched commands are being handled asynchronously by OpenSIPS.
+Once a WebSocket channel is established between the client and the API, communication will take place strictly using JSON messages which follow the JSON-RPC 2.0 request/response/notification protocol.  Note that API _clients are expected to process notifications_ from the API, while their launched commands are being handled asynchronously.
 
 ### CallStart
 

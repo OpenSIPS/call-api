@@ -19,8 +19,8 @@ package main
 
 import (
 	"github.com/sirupsen/logrus"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/ws_server"
+	"github.com/OpenSIPS/call-api/pkg/config"
+	"github.com/OpenSIPS/call-api/pkg/ws_server"
 )
 
 

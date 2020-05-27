@@ -28,8 +28,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
-	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
+	"github.com/OpenSIPS/call-api/pkg/config"
+	"github.com/OpenSIPS/call-api/internal/jsonrpc"
 )
 
 func usage(prog string) {

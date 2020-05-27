@@ -19,10 +19,10 @@ package proxy
 
 import (
 	"github.com/sirupsen/logrus"
-	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/event"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/mi"
+	"github.com/OpenSIPS/call-api/internal/jsonrpc"
+	"github.com/OpenSIPS/call-api/pkg/config"
+	"github.com/OpenSIPS/call-api/pkg/event"
+	"github.com/OpenSIPS/call-api/pkg/mi"
 )
 
 type Proxy struct {

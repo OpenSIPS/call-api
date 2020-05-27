@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
+	"github.com/OpenSIPS/call-api/internal/jsonrpc"
 )
 
 type MIDatagram struct {

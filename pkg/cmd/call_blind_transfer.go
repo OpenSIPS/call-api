@@ -18,8 +18,8 @@
 package cmd
 
 import (
-	"github.com/OpenSIPS/opensips-calling-api/pkg/event"
-	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
+	"github.com/OpenSIPS/call-api/pkg/event"
+	"github.com/OpenSIPS/call-api/internal/jsonrpc"
 )
 
 type callBlindTransferCmd struct {

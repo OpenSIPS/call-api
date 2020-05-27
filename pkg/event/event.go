@@ -19,8 +19,8 @@ package event
 
 import (
 	"github.com/sirupsen/logrus"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/mi"
-	"github.com/OpenSIPS/opensips-calling-api/internal/jsonrpc"
+	"github.com/OpenSIPS/call-api/pkg/mi"
+	"github.com/OpenSIPS/call-api/internal/jsonrpc"
 )
 
 type EventNotification func(sub Subscription, notify *jsonrpc.JsonRPCNotification)

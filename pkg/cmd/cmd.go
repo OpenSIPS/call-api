@@ -23,7 +23,7 @@ import (
 	"reflect"
 
 	"github.com/google/uuid"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/proxy"
+	"github.com/OpenSIPS/call-api/pkg/proxy"
 )
 
 type Notify func(cmd *Cmd, notify interface{})

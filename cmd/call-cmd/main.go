@@ -23,9 +23,9 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/cmd"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/proxy"
-	"github.com/OpenSIPS/opensips-calling-api/pkg/config"
+	"github.com/OpenSIPS/call-api/pkg/cmd"
+	"github.com/OpenSIPS/call-api/pkg/proxy"
+	"github.com/OpenSIPS/call-api/pkg/config"
 )
 
 func usage(prog string) {

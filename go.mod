@@ -1,4 +1,4 @@
-module github.com/OpenSIPS/opensips-calling-api
+module github.com/OpenSIPS/call-api
 
 go 1.14
 

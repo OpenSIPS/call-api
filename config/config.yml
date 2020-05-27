@@ -1,4 +1,4 @@
-# The OpenSIPS Calling API configuration file
+# The Call API configuration file
 
 
 # the API WS listener accepts long-lived WebSocket
@@ -11,7 +11,7 @@ ws_server:
   port: 5059
 
   # the HTTP endpoint which accepts WebSocket connections
-  http_path: /calling-api
+  http_path: /call-api
 
 
 # properties for the MI communication

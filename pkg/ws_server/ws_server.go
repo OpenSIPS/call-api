@@ -1,12 +1,12 @@
 //
 // Copyright (C) 2020 OpenSIPS Solutions
 //
-// OpenSIPS Calling API is free software: you can redistribute it and/or modify
+// Call API is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// OpenSIPS Calling API is distributed in the hope that it will be useful,
+// Call API is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
@@ -32,7 +32,7 @@ import (
 
 const default_ws_host string = "localhost"
 const default_ws_port int = 5059
-const default_ws_path string = "/calling-api"
+const default_ws_path string = "/call-api"
 
 var upgrader = websocket.Upgrader{} // use default options
 var Cfg *config.Config

@@ -11,7 +11,7 @@ The API listens for [WebSocket](https://en.wikipedia.org/wiki/WebSocket) connect
 ```
     go get github.com/OpenSIPS/call-api
 ```
-** TODO **
+**TODO**
 
 ## API Call Commands
 

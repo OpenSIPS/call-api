@@ -2,7 +2,7 @@
 
 ----
 
-The Call API is a front-end layer for SIP Proxies (such as [OpenSIPS](www.opensips.org)) managing more advanced SIP call flows. Combining built-in SIP scenarios (such as the ones from [RFC 5359](https://tools.ietf.org/html/rfc5359)) with real-time notifications as the call commands take place, the API is meant to help VoIP system developers build complex SIP services with ease, altogether while providing live reporting for such services.
+The Call API is a front-end for SIP Proxies (such as [OpenSIPS](https://opensips.org)), aiming to simplify the management of more advanced SIP call flows.  Combining built-in SIP scenarios (such as the ones from [RFC 5359](https://tools.ietf.org/html/rfc5359)) with real-time notifications as the call commands take place, the API is meant to help VoIP system developers build complex SIP services with ease, altogether while providing live reporting for such services.
 
 The API listens for [WebSocket](https://en.wikipedia.org/wiki/WebSocket) connections on `ws://localhost:5059/call-api` and talks [JSON-RPC 2.0](https://www.jsonrpc.org/specification) over them.
 

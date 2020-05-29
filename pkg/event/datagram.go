@@ -18,6 +18,7 @@
 package event
 
 import (
+	"errors"
 	"net"
 	"sync"
 	"syscall"
@@ -27,71 +28,166 @@ import (
 	"github.com/OpenSIPS/call-api/internal/jsonrpc"
 )
 
-// EventDatagram
+// DatagramSubscription - object referenced by Event users
+type DatagramSubscription struct {
+	valid bool
+	notify EventNotification
+	filter map[string]interface{}
+	handler *EventDatagramSub
+}
+
+func (sub *DatagramSubscription) Event() (string) {
+	return sub.handler.String()
+}
+
+func (sub *DatagramSubscription) String() (string) {
+	return sub.handler.String() // TODO: add filters
+}
+
+func (sub *DatagramSubscription) Unsubscribe() {
+	sub.valid = false
+	sub.handler.removeSubscription(sub)
+}
+
+func (sub *DatagramSubscription) MatchFilter(notify *jsonrpc.JsonRPCNotification) (bool) {
+	if sub.filter == nil {
+		return true
+	}
+	for k, v := range sub.filter {
+		r, err := notify.Get(k)
+		if err != nil || r != v {
+			return false
+		}
+	}
+	return true
+}
+
+// EventDatagramSub - manages a subscription to an event to the proxy
 type EventDatagramSub struct {
 	event string
-	conn *EventDatagramConn
-	notify EventNotification
 	subscribed bool
+	confirm chan error
+	lock sync.RWMutex
+	handler *EventDatagram
+	subscriptions []*DatagramSubscription
 }
 
 func (sub *EventDatagramSub) String() (string) {
-	return sub.conn.String()
-}
-
-func (sub *EventDatagramSub) Event() (string) {
 	return sub.event
-}
-
-func (sub *EventDatagramSub) Unsubscribe() {
-	logrus.Debug("unsubscribing event " + sub.event + " from " + sub.conn.String())
-	sub.conn.Unsubscribe(sub)
 }
 
 func (sub *EventDatagramSub) IsSubscribed() (bool) {
 	return sub.subscribed
 }
 
-func (sub *EventDatagramSub) setSubscribed() {
-	sub.subscribed = true
+func (sub *EventDatagramSub) WaitSubscribed() (bool) {
+	if sub.IsSubscribed() {
+		return true
+	}
+	// wait for it to subscribe
+	<-sub.confirm
+	return sub.IsSubscribed()
 }
 
-func (sub *EventDatagramSub) setUnsubscribed() {
-	sub.subscribed = false
+func (sub *EventDatagramSub) newSubscription(notify EventNotification, filter map[string]interface{}) (*DatagramSubscription) {
+
+	ds := &DatagramSubscription{
+		notify: notify,
+		filter: filter,
+		handler: sub,
+		valid: true,
+	}
+	sub.lock.Lock()
+	sub.subscriptions = append(sub.subscriptions, ds)
+	sub.lock.Unlock()
+	return ds
 }
 
+func (sub *EventDatagramSub) removeSubscription(ds *DatagramSubscription) {
+	sub.lock.Lock()
+	for i, s := range sub.subscriptions {
+		if s == ds {
+			sub.subscriptions = append(sub.subscriptions[0:i], sub.subscriptions[i+1:]...)
+			break
+		}
+	}
+	// inform the loop to stop waiting for events from it
+	sub.handler.notify <- sub
+	sub.lock.Unlock()
+	if !sub.IsSubscribed() {
+		return
+	}
+	// we now properly unregister
+	var eviParams = map[string]interface{}{
+		"event": sub.event,
+		"socket": sub.handler.String(),
+		"expire": 0,
+	}
+	err := sub.handler.mi.Call("event_subscribe", &eviParams, nil);
+	if err != nil {
+		logrus.Error("could not unsubscribe for event " + sub.event + " " + err.Error())
+	} else {
+		logrus.Debug("successfully unsubscrbed " + sub.event)
+	}
+}
 
-// EventDatagramConn
-type EventDatagramConn struct {
-	udp *net.UDPConn
-	wake chan error
-	lock sync.RWMutex
+func (sub *EventDatagramSub) subscribeReply(response *jsonrpc.JsonRPCResponse) {
+
+	if !response.IsError() {
+		// confirm the event is properly subscribed
+		sub.subscribed = true
+	} else {
+		// wake up the event loop to inform there's no one in there
+		sub.handler.notify <- sub
+	}
+	close(sub.confirm)
+}
+
+func (sub *EventDatagramSub) notify(n *jsonrpc.JsonRPCNotification) {
+	sub.lock.RLock()
+	for _, s := range sub.subscriptions {
+		if s.valid && s.MatchFilter(n) {
+			go s.notify(s, n)
+		}
+	}
+	sub.lock.RUnlock()
+}
+
+// EventDatagram - handler of the Datagram connection
+type EventDatagram struct {
+	mi mi.MI
+	lock sync.Mutex
+	conn *net.UDPConn
+	notify chan *EventDatagramSub
 	subs []*EventDatagramSub
-	handler *EventDatagram
 }
 
-func (conn *EventDatagramConn) waitForEvents() {
+func (event *EventDatagram) waitForEvents() {
+
+	var sub *EventDatagramSub
 
 	buffer := make([]byte, 65535)
 	for {
 		select {
-		case <-conn.wake:
-			conn.handler.RemoveConn(conn)
-			return
+		case sub = <-event.notify:
+			logrus.Debug("removing " + sub.String())
+			sub.lock.Lock()
+			if len(sub.subscriptions) == 0 {
+				event.removeEventSubscription(sub)
+			}
+			sub.lock.Unlock()
 		default:
-			r, _, err := conn.udp.ReadFrom(buffer)
+			r, _, err := event.conn.ReadFrom(buffer)
 			if err == nil {
 				result := &jsonrpc.JsonRPCNotification{}
 				err = result.Parse(buffer[0:r])
 				if err != nil {
 					logrus.Error("could not parse notification: " + err.Error())
 				} else {
-					sub := conn.getSubscription(result.Method)
+					sub = event.getEventSubscription(result.Method)
 					// run in a different routine to avoid blocking
 					if sub != nil {
-						go sub.notify(sub, result)
-					} else {
-						logrus.Warn("unknown subscriber for event " + result.Method)
+						sub.notify(result)
 					}
 				}
 			} else {
@@ -101,69 +197,55 @@ func (conn *EventDatagramConn) waitForEvents() {
 	}
 }
 
-func (conn *EventDatagramConn) Unsubscribe(sub *EventDatagramSub) {
-	// first remove it from list, to make sure we don't get any other events
-	// for it - locate it in the array
-	conn.lock.Lock()
-	for i, s := range conn.subs {
-		if s == sub {
-			conn.subs = append(conn.subs[0:i], conn.subs[i+1:]...)
+func (event *EventDatagram) getEventSubscription(ev string) (*EventDatagramSub) {
+	var es *EventDatagramSub
+	for _, es = range event.subs {
+		if es.event == ev {
 			break
 		}
 	}
-	if len(conn.subs) == 0 {
-		// inform the go routine it is no longer necessary to wait for events
-		logrus.Info("closing connection " + conn.String())
-		close(conn.wake)
-	}
-	conn.lock.Unlock()
-
-	if !sub.IsSubscribed() {
-		return
-	}
-
-	// unsubscribe from the event
-	/* we've got the connection - let us subscribe */
-	var eviParams = map[string]interface{}{
-		"event": sub.Event(),
-		"socket": sub.String(),
-		"expire": 0,
-	}
-	_, err := conn.handler.mi.CallSync("event_subscribe", &eviParams);
-	if err != nil {
-		logrus.Error("could not unsubscribe for event " + sub.Event() + " " + err.Error())
-	} else {
-		sub.setUnsubscribed()
-	}
-
+	return es
 }
 
-func (conn *EventDatagramConn) Init(event *EventDatagram) (*EventDatagramConn) {
+func (event *EventDatagram) newEventSubscription(ev string) (*EventDatagramSub) {
+	return &EventDatagramSub{
+		event: ev,
+		handler: event,
+		confirm: make(chan error, 1),
+		subscriptions: make([]*DatagramSubscription, 0),
+	}
+}
 
-	// we first need to check how we can connect to the MI handler
-	miAddr, ok := event.mi.Addr().(*net.UDPAddr)
+func (event *EventDatagram) removeEventSubscription(evSub *EventDatagramSub) {
+	event.lock.Lock()
+	for i, s := range event.subs {
+		if evSub == s {
+			logrus.Info("removing event " + evSub.String())
+			event.subs = append(event.subs[0:i], event.subs[i+1:]...)
+			break;
+		}
+	}
+	event.lock.Unlock()
+}
+
+func (event *EventDatagram) Init(mi mi.MI) (error) {
+
+	miAddr, ok := mi.Addr().(*net.UDPAddr)
 	if ok != true {
-		logrus.Error("using non-UDP protocol to connect to MI")
-		return nil
+		return errors.New("using non-UDP protocol to connect to MI")
 	}
 	c, err := net.DialUDP("udp", nil, miAddr)
 	if err != nil {
-		logrus.Error(err)
-		return nil
+		return err
 	}
-
 	udpAddr, ok := c.LocalAddr().(*net.UDPAddr)
 	if ok != true {
-		logrus.Error("using non-UDP local socket to connect to MI")
-		return nil
+		return errors.New("using non-UDP local socket to connect to MI")
 	}
-
-	// we've now got the IP we can use to reach MI, use it for further events
 	local := net.UDPAddr{IP: udpAddr.IP}
 	udpConn, err := net.ListenUDP(c.LocalAddr().Network(), &local)
 	if err != nil {
-		logrus.Error(err)
-		return nil
+		return err
 	}
 	udpConn.SetReadBuffer(65535)
 	udpConn.SetWriteBuffer(65535)
@@ -172,106 +254,65 @@ func (conn *EventDatagramConn) Init(event *EventDatagram) (*EventDatagramConn) {
 	fd := file.Fd()
 	syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 0)
 
-	/* we typically only have one subscriber per conn - lets start with that */
-	conn.subs = make([]*EventDatagramSub, 0, 1)
-	conn.wake = make(chan error, 1)
-	conn.udp = udpConn
-	conn.handler = event
-	go conn.waitForEvents()
-	return conn
-}
-
-func (conn *EventDatagramConn) String() (string) {
-	return conn.udp.LocalAddr().Network() + ":" + conn.udp.LocalAddr().String()
-}
-
-func (conn *EventDatagramConn) getSubscription(event string) (*EventDatagramSub) {
-	var subs *EventDatagramSub
-	conn.lock.RLock()
-	for _, subs = range conn.subs {
-		if subs.event == event {
-			break
-		}
-	}
-	conn.lock.RUnlock()
-	return subs
-}
-
-
-// EventDatagram
-type EventDatagram struct {
-	mi mi.MI
-	lock sync.Mutex
-	conns []*EventDatagramConn
-}
-
-func (event *EventDatagram) Init(mi mi.MI) (error) {
-
-	/* we typically only use one socket */
-	event.conns = make([]*EventDatagramConn, 0, 1)
 	event.mi = mi
+	event.conn = udpConn
+	event.subs = make([]*EventDatagramSub, 0, 1)
+	event.notify = make(chan *EventDatagramSub, 1)
+	go event.waitForEvents()
 	return nil
 }
 
-func (event *EventDatagram) Subscribe(ev string, notify EventNotification) (Subscription) {
+func (event *EventDatagram) SubscribeFilter(ev string, notify EventNotification, filter map[string]interface{}) (Subscription) {
 
-	var conn *EventDatagramConn
+	var newSub bool
+	newSub = false
 
 	/* search for a connection that does not have this event registered */
 	event.lock.Lock()
-	for _, conn = range event.conns {
-		if conn.getSubscription(ev) == nil {
-			break
+	evSub := event.getEventSubscription(ev)
+	if evSub == nil {
+		evSub = event.newEventSubscription(ev)
+		if evSub == nil {
+			logrus.Error("could not create new subscription")
+			return nil
+		} else {
+			event.subs = append(event.subs, evSub)
+			newSub = true
 		}
 	}
+	event.lock.Unlock()
 
-	if conn == nil {
-		conn = &EventDatagramConn{}
-		conn.Init(event)
-		if conn == nil {
+	if newSub {
+		/* we now have a proper conn to listen for events on */
+		logrus.Debug("subscribing for " + ev + " on " + event.String())
+
+		/* we've got the connection - let us subscribe */
+		var eviParams = map[string]interface{}{
+			"event": ev,
+			"socket": event.String(),
+			"expire": 120,
+		}
+		err := event.mi.Call("event_subscribe", &eviParams, evSub.subscribeReply)
+		if err != nil {
+			logrus.Error("could not subscribe for event " + ev + ": " + err.Error())
+			event.removeEventSubscription(evSub)
 			return nil
 		}
-		/* add the new connection */
-		event.conns = append(event.conns, conn)
 	}
 
-	sub := &EventDatagramSub{conn: conn, event:ev, notify: notify}
-	conn.subs = append(conn.subs, sub)
-	event.lock.Unlock()
-
-	/* we now have a proper conn to listen for events on */
-	logrus.Debug("subscribing for " + sub.Event() + " on " + sub.String())
-
-	/* we've got the connection - let us subscribe */
-	var eviParams = map[string]interface{}{
-		"event": ev,
-		"socket": conn.String(),
-		"expire": 120,
-	}
-	_, err := event.mi.CallSync("event_subscribe", &eviParams);
-	if err != nil {
-		logrus.Error("could not subscribe for event " + ev + ": " + err.Error())
-		sub.Unsubscribe()
+	if !evSub.WaitSubscribed() {
+		logrus.Error("could not subscribe for event " + ev)
+		event.removeEventSubscription(evSub)
 		return nil
 	}
-	sub.setSubscribed()
 
-	logrus.Debug("subscribed " + sub.Event() + " at " + sub.String())
-	return sub
+	return evSub.newSubscription(notify, filter)
 }
 
-func (event *EventDatagram) Close() {
-	logrus.Debug("closing datagram handler")
+func (event *EventDatagram) Subscribe(ev string, notify EventNotification) (Subscription) {
+	return event.SubscribeFilter(ev, notify, nil)
 }
 
-func (event *EventDatagram) RemoveConn(conn *EventDatagramConn) {
-	event.lock.Lock()
-	for i, c := range event.conns {
-		if conn == c {
-			logrus.Info("removing connection " + conn.String())
-			event.conns = append(event.conns[0:i], event.conns[i+1:]...)
-			break;
-		}
-	}
-	event.lock.Unlock()
+func (event *EventDatagram) String() (string) {
+	return event.conn.LocalAddr().Network() + ":" + event.conn.LocalAddr().String()
 }

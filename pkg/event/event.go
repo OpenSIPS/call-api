@@ -29,13 +29,12 @@ type Subscription interface {
 	Event() (string)
 	String() (string)
 	Unsubscribe()
-	IsSubscribed() (bool)
 }
 
 type Event interface {
 	Init(mi.MI) (error)
-	Close()
 	Subscribe(event string, notify EventNotification) (Subscription)
+	SubscribeFilter(event string, notify EventNotification, filter map[string]interface{}) (Subscription)
 }
 
 func EventHandler(mi mi.MI) (Event) {

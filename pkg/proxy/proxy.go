@@ -55,5 +55,9 @@ func (proxy *Proxy) MICallSync(command string, params interface{}) (*jsonrpc.Jso
 }
 
 func (proxy *Proxy) Subscribe(event string, notify event.EventNotification) (event.Subscription) {
-	return proxy.ev.Subscribe(event, notify)
+	return proxy.ev.SubscribeFilter(event, notify, nil)
+}
+
+func (proxy *Proxy) SubscribeFilter(event string, notify event.EventNotification, filter map[string]interface{}) (event.Subscription) {
+	return proxy.ev.SubscribeFilter(event, notify, filter)
 }

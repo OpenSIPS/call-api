@@ -100,12 +100,24 @@ func (reply *JsonRPCResponse) IsError() (bool) {
 	return reply.Error != nil
 }
 
-func getString(i interface{}, name string) (string, error) {
+func getInterface(i interface{}, name string) (interface{}, error) {
 	m, ok := i.(map[string]interface{})
 	if !ok {
-		return "", errors.New("result is not a map")
+		return nil, errors.New("result is not a map")
 	}
-	val, ok := m[name].(string)
+	val, ok := m[name]
+	if ok != true {
+		return nil, errors.New("value not found")
+	}
+	return val, nil
+}
+
+func getString(i interface{}, name string) (string, error) {
+	v, err := getInterface(i, name)
+	if err != nil {
+		return "", nil
+	}
+	val, ok := v.(string)
 	if ok != true {
 		return "", errors.New("invalid type for " + name)
 	}
@@ -118,4 +130,8 @@ func (reply *JsonRPCResponse) GetString(name string) (string, error) {
 
 func (notify *JsonRPCNotification) GetString(name string) (string, error) {
 	return getString(notify.Params, name)
+}
+
+func (notify *JsonRPCNotification) Get(name string) (interface{}, error) {
+	return getInterface(notify.Params, name)
 }

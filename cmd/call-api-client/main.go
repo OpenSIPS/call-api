@@ -43,7 +43,7 @@ func ParseClientArgs() (string, string, interface{}, string) {
 	flag.StringVar(&params, "params", "", "JSON-RPC params")
 	flag.StringVar(&id, "id", "", "JSON-RPC id")
 
-	cfgPath, err := config.ParseFlags("config")
+	cfgPath, err := config.ParseFlags("call-api")
 	if err != nil {
 		logrus.Fatal(err)
 	}

@@ -13,6 +13,13 @@ The API listens for [WebSocket](https://en.wikipedia.org/wiki/WebSocket) connect
 ```
 **TODO**
 
+## Configuration
+
+```
+    go get github.com/OpenSIPS/call-api
+```
+**TODO**
+
 ## API Call Commands
 
 Below are the API's commands available for building your JSON-RPC requests.  Read the documentation of each command for a listing of its input parameters and their accepted values:

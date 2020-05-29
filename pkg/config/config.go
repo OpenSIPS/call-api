@@ -21,10 +21,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
+
+// Default config dirs
+var defaultConfigDirs = [3]string{"config","/etc","/etc/call-api"}
 
 // Call API "config.yml" file structure
 type Config struct {
@@ -82,13 +86,17 @@ func ValidateConfigPath(path string) error {
 
 // Call API command-line parameters
 func ParseFlags(tool string) (string, error) {
+	var err error
 	var configPath string
 
-	flag.StringVar(&configPath, "config", "./config/" + tool + ".yml", "path to config file")
+	flag.StringVar(&configPath, "config", "", "path to config file")
 
 	flag.Parse()
+	if (configPath == "") {
+		configPath, err = GetDefaultConfigPath(tool)
+	}
 
-	return configPath, nil
+	return configPath, err
 }
 
 
@@ -113,4 +121,23 @@ func InitLogging(cfg *Config) (file *os.File, err error) {
 	}
 
 	return
+}
+
+func GetDefaultConfigPath(tool string) (string, error) {
+
+	var err error
+	var cfg string
+	var tested []string
+
+	for _, d := range defaultConfigDirs {
+		cfg = fmt.Sprintf("%s/%s.yml", d, tool)
+		err = ValidateConfigPath(cfg)
+		if err == nil {
+			return cfg, nil
+		} else {
+			logrus.Debug(err.Error())
+		}
+		tested = append(tested, cfg)
+	}
+	return "", fmt.Errorf("No config file found in any of %s", strings.Join(tested, ","))
 }

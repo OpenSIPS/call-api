@@ -26,7 +26,7 @@ import (
 
 func main() {
 	// parse cmdline args
-	cfgPath, err := config.ParseFlags("config")
+	cfgPath, err := config.ParseFlags("call-api")
 	if err != nil {
 		logrus.Fatal(err)
 	}

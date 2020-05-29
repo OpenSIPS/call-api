@@ -121,13 +121,17 @@ func (c *Cmd) CallAttendedTransfer(params map[string]interface{}) {
 		"transfer_leg": legB,
 	}
 
+	var transferFilter = map[string]interface{}{
+		"callid": callidA,
+	}
+
 	ca := &callAttendedTransferCmd{
 		cmd: c,
 		callid: callidA,
 	}
 
 	/* before transfering, register for new blind transfer events */
-	ca.sub = c.proxy.Subscribe("E_CALL_TRANSFER", ca.callAttendedTransferNotify)
+	ca.sub = c.proxy.SubscribeFilter("E_CALL_TRANSFER", ca.callAttendedTransferNotify, transferFilter)
 	if ca.sub == nil {
 		c.NotifyNewError("Could not subscribe for event")
 		return

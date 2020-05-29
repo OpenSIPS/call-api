@@ -126,8 +126,12 @@ func (cs *callStartCmd) callStartInitial(response *jsonrpc.JsonRPCResponse) {
 		"destination": cs.callee,
 	}
 
+	var transferFilter = map[string]interface{}{
+		"callid": cs.cmd.ID,
+	}
+
 	/* before transfering, register for new blind transfer events */
-	cs.sub = cs.cmd.proxy.Subscribe("E_CALL_TRANSFER", cs.callStartNotify)
+	cs.sub = cs.cmd.proxy.SubscribeFilter("E_CALL_TRANSFER", cs.callStartNotify, transferFilter)
 	if cs.sub == nil {
 		cs.cmd.NotifyNewError("Could not subscribe for event")
 		return

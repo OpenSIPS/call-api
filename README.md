@@ -17,7 +17,39 @@ The API listens for [WebSocket](https://en.wikipedia.org/wiki/WebSocket) connect
 
 ```
     go get github.com/OpenSIPS/call-api
+    
+    
 ```
+#### Go to the folder config
+
+```
+[root@centos src]# cd call-api/config/
+```
+#### Create folder /etc/call-api and copy these files to them
+
+```
+[root@centos config]# mkdir /etc/call-api/
+
+[root@centos config]# ls -lah
+drwxr-xr-x. 2 root root  46 May 30 02:54 .
+drwxr-xr-x. 7 root root 164 May 30 02:54 ..
+-rw-r--r--. 1 root root 607 May 30 02:54 call-api.yml
+-rw-r--r--. 1 root root 294 May 30 02:54 call-cmd.yml
+
+root@centos config]# cp call-api.yml call-cmd.yml /etc/call-api/
+```
+***remember to look inside /etc/call-api/call-api.yml to configure with the right mi properties to establish the communication .
+
+#### Starting The API
+```
+[root@centos call-api]# go run main.go
+INFO[0000] Listening for JSON-RPC over WebSocket on localhost:5059/call-api ...
+```
+If the api start you will get some message like that.
+
+Now you are able to send the requests.
+
+
 **TODO**
 
 ## API Call Commands

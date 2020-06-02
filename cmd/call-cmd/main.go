@@ -79,9 +79,9 @@ func main() {
 		if event == nil {
 			break
 		} else if event.IsError() {
-			logrus.Fatal(event.Error.Error())
+			logrus.Fatal(event.String())
 		} else {
-			logrus.Printf("%s: %v", c.ID, event.Event)
+			logrus.Printf("%s:%s: %+v", c.Command, c.ID, event.String())
 		}
 	}
 }

@@ -149,6 +149,7 @@ func (wsc *WSConnection) pollWSConnection(agg chan *WSCmdEvent) {
 // JSON-RPC based, two-way communication over a long-lived WebSocket connection
 func wsConnection(w http.ResponseWriter, r *http.Request) {
 	var err error
+	var cmd_id string
 
 	logrus.Debugf("new connection from %s", r.RemoteAddr)
 
@@ -194,10 +195,16 @@ func wsConnection(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		cmd_id, ok := params["cmd_id"].(string)
-		if !ok {
-			wsc.ReplyError("bad cmd_id (must be a string)", req.ID)
-			continue
+		cmd_any_id, ok := params["cmd_id"]
+		// if there was a cmd_id in the initial request
+		if ok {
+			cmd_id, ok = cmd_any_id.(string)
+			if !ok {
+				wsc.ReplyError("bad cmd_id (must be a string)", req.ID)
+				continue
+			}
+		} else {
+			cmd_id = ""
 		}
 
 		c := cmd.New(req.Method, cmd_id, wsc.proxy)

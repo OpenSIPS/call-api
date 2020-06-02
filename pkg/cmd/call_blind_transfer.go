@@ -38,6 +38,8 @@ func (cb *callBlindTransferCmd) callBlindTransferEnd() {
 
 func (cb *callBlindTransferCmd) callBlindTransferNotify(sub event.Subscription, notify *jsonrpc.JsonRPCNotification) {
 
+	var event string
+
 	state, err := notify.GetString("state")
 	if err != nil {
 		cb.cmd.NotifyError(err)
@@ -49,14 +51,44 @@ func (cb *callBlindTransferCmd) callBlindTransferNotify(sub event.Subscription, 
 		cb.cmd.NotifyError(err)
 		return
 	}
-	cb.cmd.NotifyEvent(notify.Params)
+
+	callid, err := notify.GetString("transfer_callid")
+	if err != nil {
+		cb.cmd.NotifyError(err)
+		return
+	}
 
 	switch state {
-	case "ok":
-		cb.callBlindTransferEnd()
-		cb.cmd.NotifyEnd()
 	case "failure":
 		cb.cmd.NotifyNewError("Transfer failed with status " + status)
+		return
+	case "ok":
+		event = "TransferSuccessful"
+		status = ""
+	case "start":
+		event = "TransferStart"
+		cb.dst, err = notify.GetString("destination")
+		if err != nil {
+			cb.cmd.NotifyError(err)
+			return
+		}
+	default:
+		event = "TransferPending"
+	}
+
+	body :=  map[string]interface{}{
+		"callid": callid,
+		"destination": cb.dst,
+	}
+
+	if status != "" {
+		body["extra"] = status
+	}
+	cb.cmd.NotifyEvent(event, body)
+
+	if state == "ok" {
+		cb.callBlindTransferEnd()
+		cb.cmd.NotifyEnd()
 	}
 }
 
@@ -68,8 +100,9 @@ func (cb *callBlindTransferCmd) callBlindTransferReply(response *jsonrpc.JsonRPC
 		return
 	}
 
-	/* XXX: report 2 - call transferred */
-	cb.cmd.NotifyEvent("transfered to " + cb.dst)
+	cb.cmd.NotifyEvent("Transferring", map[string]interface{}{
+		"destination": cb.dst,
+	})
 }
 
 func (c *Cmd) CallBlindTransfer(params map[string]interface{}) {
@@ -103,6 +136,7 @@ func (c *Cmd) CallBlindTransfer(params map[string]interface{}) {
 	cb := &callBlindTransferCmd{
 		cmd: c,
 		callid: callid,
+		dst: destination,
 	}
 
 	/* before transfering, register for new blind transfer events */

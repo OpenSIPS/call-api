@@ -74,7 +74,7 @@ func (wsc *WSConnection) ReplyOK(jsonrpc_id interface{}, cmd_id string) {
 		JSONRPC: "2.0",
 		ID: jsonrpc_id,
 		Result: &map[string]string {
-			"status": "Started",
+			"event": "Started",
 			"cmd_id": cmd_id,
 		},
 	}
@@ -101,34 +101,32 @@ func (wsc *WSConnection) pollWSConnection(agg chan *WSCmdEvent) {
 		c := ev.cmd
 
 		if ev.event == nil {
-			response = &jsonrpc.JsonRPCNotification{
-				JSONRPC: "2.0",
-				Method: "Ended",
-				Params: &map[string]interface{}{
+			response = jsonrpc.NewNotification(c.Command,
+				&map[string]interface{}{
 					"cmd_id": c.ID,
+					"event": "Ended",
 				},
-			}
+			)
 		} else {
 			logrus.Debugf("event on cmd %s (%s), event: %s", c.Command, c.ID, ev.event)
 
 			if ev.event.IsError() {
-				response = &jsonrpc.JsonRPCNotification{
-					JSONRPC: "2.0",
-					Method: "Error",
-					Params: &map[string]interface{}{
+				response = jsonrpc.NewNotification(c.Command,
+					&map[string]interface{}{
 						"cmd_id": c.ID,
-						"error_msg": fmt.Sprintf("%s", ev.event.Error),
+						"event": "Error",
+						"data": ev.event.Error.Error(),
 					},
-				}
+				)
 			} else {
-				response = &jsonrpc.JsonRPCNotification{
-					JSONRPC: "2.0",
-					Method: "Event",
-					Params: &map[string]interface{}{
-						"cmd_id": c.ID,
-						"data": ev.event.Event,
-					},
+				body := map[string]interface{}{
+					"cmd_id": c.ID,
+					"event": ev.event.Name,
 				}
+				if ev.event.HasParams() {
+					body["data"] = ev.event.Params
+				}
+				response = jsonrpc.NewNotification(c.Command, body)
 			}
 		}
 

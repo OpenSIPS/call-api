@@ -107,8 +107,8 @@ func (c *Cmd) NotifyNewError(err string ) {
 }
 
 /* Notify an event */
-func (c *Cmd) NotifyEvent(event interface{}) {
-	c.Notify(NewEvent(event))
+func (c *Cmd) NotifyEvent(name string, event interface{}) {
+	c.Notify(NewEvent(name, event))
 }
 
 /* Notify the termination of the command handling */

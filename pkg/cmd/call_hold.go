@@ -24,11 +24,15 @@ import (
 
 type callHoldCmd struct {
 	cmd *Cmd
+	hold bool
 	callid string
+	caller_done, callee_done bool
 	sub event.Subscription
 }
 
 func (ch *callHoldCmd) callHoldNotify(sub event.Subscription, notify *jsonrpc.JsonRPCNotification) {
+
+	var event string
 
 	state, err := notify.GetString("state")
 	if err != nil {
@@ -36,17 +40,46 @@ func (ch *callHoldCmd) callHoldNotify(sub event.Subscription, notify *jsonrpc.Js
 		return
 	}
 
-	ch.cmd.NotifyEvent(notify.Params)
+	leg, err := notify.GetString("leg")
+	if err != nil {
+		ch.cmd.NotifyError(err)
+		return
+	}
 
 	switch state {
-	case "ok":
-		ch.cmd.NotifyEnd()
 	case "failure":
 		ch.cmd.NotifyNewError("Transfer failed")
+	case "ok":
+		if leg == "caller" {
+			ch.caller_done = true
+		} else {
+			ch.callee_done = true
+		}
+		if ch.hold {
+			event = "CallHoldSuccessful"
+		} else {
+			event = "CallUnholdSuccessful"
+		}
+	case "start":
+		if ch.hold {
+			event = "CallHoldStart"
+		} else {
+			event = "CallUnholdStart"
+		}
+	}
+
+	ch.cmd.NotifyEvent(event, map[string]interface{}{
+		"leg": leg,
+	})
+
+	if state == "ok" && ch.caller_done && ch.callee_done {
+		ch.cmd.NotifyEnd()
 	}
 }
 
 func (ch *callHoldCmd) callHoldReply(response *jsonrpc.JsonRPCResponse) {
+
+	var event string
 
 	if response.IsError() {
 		ch.cmd.NotifyError(response.Error)
@@ -54,7 +87,13 @@ func (ch *callHoldCmd) callHoldReply(response *jsonrpc.JsonRPCResponse) {
 		return
 	}
 
-	ch.cmd.NotifyEvent(response.Result)
+	if ch.hold {
+		event = "CallHolding"
+	} else {
+		event = "CallUnholding"
+	}
+
+	ch.cmd.NotifyEvent(event, nil)
 }
 
 func (ch *callHoldCmd) callHoldUnhold(cmd string, params map[string]interface{}) {
@@ -88,6 +127,7 @@ func (c *Cmd) CallHold(params map[string]interface{}) {
 
 	ch := &callHoldCmd{
 		cmd: c,
+		hold: true,
 	}
 	ch.callHoldUnhold("call_hold", params)
 }
@@ -96,6 +136,7 @@ func (c *Cmd) CallUnhold(params map[string]interface{}) {
 
 	ch := &callHoldCmd{
 		cmd: c,
+		hold: false,
 	}
 	ch.callHoldUnhold("call_unhold", params)
 }

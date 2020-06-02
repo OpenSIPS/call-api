@@ -17,19 +17,45 @@
 
 package cmd
 
+import (
+	"fmt"
+)
+
 type CmdEvent struct {
 	Error error
-	Event interface{}
+	Name string
+	Params interface{}
 }
 
 func NewError(err error) (c *CmdEvent) {
 	return &CmdEvent{Error: err}
 }
 
-func NewEvent(event interface{}) (c *CmdEvent) {
-	return &CmdEvent{Event: event}
+func NewEvent(name string, event interface{}) (c *CmdEvent) {
+	switch name {
+		case
+			"End",
+			"Started",
+			"Error":
+			panic("Event '" + name + "' is reserved")
+	}
+	return &CmdEvent{Name: name, Params: event}
 }
 
 func (c *CmdEvent) IsError() (bool) {
 	return c.Error != nil
+}
+
+func (c *CmdEvent) HasParams() (bool) {
+	return c.Params != nil
+}
+
+func (c *CmdEvent) String() (string) {
+	if c.IsError() {
+		return c.Error.Error()
+	} else if !c.HasParams() {
+		return c.Name
+	} else {
+		return c.Name + ": " + fmt.Sprint(c.Params)
+	}
 }

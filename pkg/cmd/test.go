@@ -17,7 +17,9 @@
 
 package cmd
 
-func (c *Cmd) Echo(params map[string]interface{}) {
-	c.NotifyEvent("Reply", params)
+func (c *Cmd) Test(params map[string]interface{}) {
+	c.NotifyEvent("TODO", params)
+	sub := c.proxy.Subscribe("E_CALL_TRANSFER", nil)
+	sub.Unsubscribe()
 	c.NotifyEnd()
 }

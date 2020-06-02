@@ -1,4 +1,4 @@
-//
+
 // Copyright (C) 2020 OpenSIPS Solutions
 //
 // Call API is free software: you can redistribute it and/or modify
@@ -43,6 +43,8 @@ func (cs *callStartCmd) callStartEnd() {
 
 func (cs *callStartCmd) callStartNotify(sub event.Subscription, notify *jsonrpc.JsonRPCNotification) {
 
+	var event string
+
 	state, err := notify.GetString("state")
 	if err != nil {
 		cs.cmd.NotifyError(err)
@@ -54,15 +56,40 @@ func (cs *callStartCmd) callStartNotify(sub event.Subscription, notify *jsonrpc.
 		cs.cmd.NotifyError(err)
 		return
 	}
-	cs.cmd.NotifyEvent(notify.Params)
+
+	callid, err := notify.GetString("transfer_callid")
+	if err != nil {
+		cs.cmd.NotifyError(err)
+		return
+	}
 
 	switch state {
 	case "failure":
 		cs.cmd.NotifyNewError("transfer failed with status " + status)
+		return
 	case "ok":
+		event = "CalleeAnswered"
+		status = ""
+	case "start":
+		event = "TransferStart"
+	default:
+		event = "TransferPending"
+	}
+
+	body :=  map[string]interface{}{
+		"callid": callid,
+		"caller": cs.caller,
+		"callee": cs.callee,
+	}
+
+	if status != "" {
+		body["extra"] = status
+	}
+	cs.cmd.NotifyEvent(event, body)
+
+	if state == "ok" {
 		cs.callStartEnd()
 		cs.cmd.NotifyEnd()
-	default:
 	}
 }
 
@@ -74,8 +101,10 @@ func (cs *callStartCmd) callStartTransfer(response *jsonrpc.JsonRPCResponse) {
 		return
 	}
 
-	/* XXX: report 2 - call transferred */
-	cs.cmd.NotifyEvent("transfered to " + cs.callee);
+	cs.cmd.NotifyEvent("Transferring", map[string]interface{}{
+		"caller": cs.caller,
+		"destination": cs.callee,
+	})
 }
 
 
@@ -117,8 +146,10 @@ func (cs *callStartCmd) callStartInitial(response *jsonrpc.JsonRPCResponse) {
 		}
 	}
 
-	/* XXX: report 1 - call answered */
-	cs.cmd.NotifyEvent("answered by " + cs.caller)
+	cs.cmd.NotifyEvent("CallerAnswered", map[string]interface{}{
+		"caller": cs.caller,
+		"callee": cs.callee,
+	})
 
 	var transferParams = map[string]string{
 		"callid": cs.cmd.ID,

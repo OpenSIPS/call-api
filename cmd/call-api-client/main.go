@@ -132,10 +132,13 @@ func main() {
 				return
 			}
 
-			method := v.(map[string]interface{})["method"]
-			if method == "Ended" {
-				closeWSConnection(c)
-				return
+			params := v.(map[string]interface{})["params"]
+			if params != nil {
+				status := params.(map[string]interface{})["event"]
+				if status == "Ended" || status == "Error" {
+					closeWSConnection(c)
+					return
+				}
 			}
 		}
 	}()

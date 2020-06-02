@@ -22,9 +22,8 @@ import (
 
 type callAttendedTransferCmd struct {
 	ended bool
-	legs int
 	cmd *Cmd
-	callid string
+	callid, dst string
 	sub event.Subscription
 }
 
@@ -36,6 +35,8 @@ func (ca *callAttendedTransferCmd) callAttendedTransferEnd() {
 }
 
 func (ca *callAttendedTransferCmd) callAttendedTransferNotify(sub event.Subscription, notify *jsonrpc.JsonRPCNotification) {
+
+	var event string
 
 	state, err := notify.GetString("state")
 	if err != nil {
@@ -49,33 +50,52 @@ func (ca *callAttendedTransferCmd) callAttendedTransferNotify(sub event.Subscrip
 		ca.cmd.NotifyError(err)
 		return
 	}
-	ca.cmd.NotifyEvent(notify.Params)
+
+	callid, err := notify.GetString("transfer_callid")
+	if err != nil {
+		ca.cmd.NotifyError(err)
+		return
+	}
 
 	switch state {
-	case "ok":
-		ca.legs -= 1
-		if ca.legs == 0 {
-			if !ca.ended {
-				ca.callAttendedTransferEnd()
-			}
-			ca.cmd.NotifyEnd()
-		}
 	case "failure":
-		ca.legs -= 1
-		if ca.legs == 0 {
-			ca.sub.Unsubscribe()
-			ca.cmd.NotifyNewError("transfer failed with status " + status)
+		ca.sub.Unsubscribe()
+		ca.cmd.NotifyNewError("transfer failed with status " + status)
+	case "ok":
+		if !ca.ended {
+			ca.callAttendedTransferEnd()
 		}
+		event = "TransferSuccessful"
+		status = ""
 	case "start":
-		/* we are counting the legs we will be notified for */
-		ca.legs += 1
+		event = "TransferStart"
+		ca.dst, err = notify.GetString("destination")
+		if err != nil {
+			ca.cmd.NotifyError(err)
+			return
+		}
 	default:
+		event = "TransferPending"
 		// this is a provisional that has a sip status in it - if 200, then we
 		// should terminate the initial dialog
 		if status != "" && status[0] == '2' {
 			ca.callAttendedTransferEnd()
 			ca.ended = true
 		}
+	}
+
+	body :=  map[string]interface{}{
+		"callid": callid,
+	}
+	if ca.dst != "" {
+		body["destination"] = ca.dst
+	}
+	if status != "" {
+		body["extra"] = status
+	}
+	ca.cmd.NotifyEvent(event, body)
+	if state == "ok" {
+		ca.cmd.NotifyEnd()
 	}
 }
 
@@ -87,8 +107,7 @@ func (ca *callAttendedTransferCmd) callAttendedTransferReply(response *jsonrpc.J
 		return
 	}
 
-	/* XXX: report 2 - call transferred */
-	ca.cmd.NotifyEvent("transfering")
+	ca.cmd.NotifyEvent("Transferring", nil)
 }
 
 func (c *Cmd) CallAttendedTransfer(params map[string]interface{}) {

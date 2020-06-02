@@ -2,6 +2,65 @@
 
 Once a WebSocket channel is established between the client and the API, communication will take place strictly using JSON messages which follow the JSON-RPC 2.0 request/response/notification protocol.  Note that API _clients are expected to process notifications_ from the API, while their launched commands are being handled asynchronously.
 
+## Echo
+
+Command that receives arbitrary parameters and outputs them back as a
+notification. This command is useful to test connectivity to the API server.
+
+### Parameters
+
+_Any_ parameter
+
+### Parameters
+
+1) WS client ----------> API
+
+{
+    "method": "Echo",
+    "params": {
+        "test": "echo",
+    }
+
+    "id": "33f6c98c821b",
+    "jsonrpc": "2.0"
+}
+
+2) WS client <---------- API
+
+{
+    "result": {
+        "cmd_id": "0f8a1664-01e2-46fe-ae55-e02715afee02",
+        "status": "Started"
+    }
+
+    "id": "33f6c98c821b",
+    "jsonrpc": "2.0"
+}
+
+3) WS client <---------- API
+
+{
+    "method": "Event",
+    "params": {
+        "cmd_id": "0f8a1664-01e2-46fe-ae55-e02715afee02",
+        "data": {"test":"echo"}}
+    }
+
+    "jsonrpc": "2.0"
+}
+
+4) WS client <---------- API
+
+{
+    "method": "Ended",
+    "params": {
+        "cmd_id": "0f8a1664-01e2-46fe-ae55-e02715afee02",
+    }
+
+    "jsonrpc": "2.0"
+}
+
+
 ## CallStart
 
 ### Parameters

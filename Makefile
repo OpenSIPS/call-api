@@ -1,4 +1,6 @@
 
+GOPATH ?= $(HOME)/go
+GOBIN ?= $(GOPATH)/bin
 BUILD_DIR ?= bin
 CFG_BASE_DIR ?= /etc/call-api
 BUILD_FLAGS ?= -i
@@ -8,7 +10,7 @@ CMD_TOOLS=$(wildcard cmd/*/main.go)
 TOOLS?=$(patsubst cmd/%/main.go,%,$(CMD_TOOLS))
 
 BUILD_TOOLS=$(addprefix $(BUILD_DIR)/,$(TOOLS))
-INSTALL_TOOLS=$(addprefix $(GOPATH)/bin/%,$(TOOLS))
+INSTALL_TOOLS=$(addprefix $(GOBIN)/,$(TOOLS))
 
 CFG_FILES=$(wildcard config/*.yml)
 CFG_TOOLS=$(filter $(patsubst config/%.yml,%,$(CFG_FILES)),$(TOOLS))
@@ -26,16 +28,16 @@ install-cfg: $(INSTALL_CFG_TOOLS)
 
 build-tools: $(BUILD_DIR) $(BUILD_TOOLS)
 
-install-tools: $(GOPATH)/bin
+install-tools: $(GOBIN) $(INSTALL_TOOLS)
 
-$(BUILD_DIR) $(GOPATH)/bin $(CFG_BASE_DIR):
+$(BUILD_DIR) $(GOBIN) $(CFG_BASE_DIR):
 	@mkdir -p $@
 
 $(BUILD_DIR)/%: cmd/%/main.go
 	go build $(BUILD_FLAGS) -o $@ $^
 
-$(GOPATH)/bin/%: cmd/%/main.go
-	go install $(BUILD_FLAGS) -o $@ $^
+$(GOBIN)/%: cmd/%/main.go
+	go install $^ && mv $(GOBIN)/main $@
 
 $(CFG_BASE_DIR)/%.yml: config/%.yml $(CFG_BASE_DIR)
 	@test -e $@ || cp $< $@

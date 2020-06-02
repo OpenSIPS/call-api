@@ -6,19 +6,33 @@ The Call API is a front-end for SIP Proxies (such as [OpenSIPS](https://opensips
 
 The API listens for [WebSocket](https://en.wikipedia.org/wiki/WebSocket) connections on `ws://localhost:5059/call-api` and talks [JSON-RPC 2.0](https://www.jsonrpc.org/specification) over them.
 
+## Requirements
+
+The Call API tool is using go modules, introduced in go 1.13, but the tool was developed based on go version 1.14. We recommend you install at least go 1.14 using your distribution's repositories, or from the official [Golang repository](https://golang.org/dl/).
+
 ## Installation
 
 ```
     go get github.com/OpenSIPS/call-api
+    cd ${GOPATH:-$HOME/go}/src/github.com/OpenSIPS/call-api
+    make build
+    bin/call-api
 ```
-**TODO**
+
+The following steps will build all the project's tools in the `bin/` folder of the current directory.
+ In order to make a complete install of the project, you can follow these steps:
+
+```
+    make install
+    export PATH=$PATH:${GOBIN:-${GOPATH:-$HOME/go}/bin}
+    call-api
+```
 
 ## Configuration
 
-```
-    go get github.com/OpenSIPS/call-api
-```
-**TODO**
+Each tool uses a configuration file that defaults to `tool-name.yml` (ex: `call-api.yml` or `call-cmd.yml`). This file is automatically searched in the following folders: `config/`, `/etc` and `/etc/call-api`, in this specific order. A custom path can be specified using the `-config cfg_file.yml` parameter when starting the tool (ex: `call-api -config /etc/custom-config.yml`
+
+Examples of configuration files can be found in the [config](config/) directory.
 
 ## API Call Commands
 

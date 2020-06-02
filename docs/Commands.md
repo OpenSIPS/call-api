@@ -11,8 +11,9 @@ notification. This command is useful to test connectivity to the API server.
 
 _Any_ parameter
 
-### Parameters
+### Example JSON-RPC flow:
 
+```
 1) WS client ----------> API
 
 {
@@ -24,6 +25,7 @@ _Any_ parameter
     "id": "33f6c98c821b",
     "jsonrpc": "2.0"
 }
+```
 
 2) WS client <---------- API
 
@@ -59,7 +61,7 @@ _Any_ parameter
 
     "jsonrpc": "2.0"
 }
-
+```
 
 ## CallStart
 

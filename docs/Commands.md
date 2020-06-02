@@ -25,7 +25,6 @@ _Any_ parameter
     "id": "33f6c98c821b",
     "jsonrpc": "2.0"
 }
-```
 
 2) WS client <---------- API
 

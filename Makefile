@@ -4,6 +4,7 @@ GOBIN ?= $(GOPATH)/bin
 BUILD_DIR ?= bin
 CFG_BASE_DIR ?= /etc/call-api
 BUILD_FLAGS ?= -i
+GITREPO=github.com/OpenSIPS/call-api
 
 CMD_TOOLS=$(wildcard cmd/*/main.go)
 
@@ -15,6 +16,11 @@ INSTALL_TOOLS=$(addprefix $(GOBIN)/,$(TOOLS))
 CFG_FILES=$(wildcard config/*.yml)
 CFG_TOOLS=$(filter $(patsubst config/%.yml,%,$(CFG_FILES)),$(TOOLS))
 INSTALL_CFG_TOOLS=$(addsuffix .yml,$(addprefix $(CFG_BASE_DIR)/,$(CFG_TOOLS)))
+
+GIT_COMMIT := $(shell git rev-list -1 HEAD)
+BUILD_TIME := $(shell date +%Y%m%d%H%m%S)
+LDFLAGS := -ldflags "-X $(GITREPO)/utils.GitCommit=$(GIT_COMMIT) \
+	-X $(GITREPO)/utils.BuildTime=$(BUILD_TIME)"
 
 build: build-all
 
@@ -34,10 +40,10 @@ $(BUILD_DIR) $(GOBIN) $(CFG_BASE_DIR):
 	@mkdir -p $@
 
 $(BUILD_DIR)/%: cmd/%/main.go
-	go build $(BUILD_FLAGS) -o $@ $^
+	go build $(BUILD_FLAGS) $(LDFLAGS) -o $@ $^
 
 $(GOBIN)/%: cmd/%/main.go
-	go install $^ && mv $(GOBIN)/main $@
+	go install $(LDFLAGS) $^ && mv $(GOBIN)/main $@
 
 $(CFG_BASE_DIR)/%.yml: config/%.yml $(CFG_BASE_DIR)
 	@test -e $@ || cp $< $@

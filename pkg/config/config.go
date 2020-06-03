@@ -23,6 +23,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/OpenSIPS/call-api/utils"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
@@ -48,6 +49,10 @@ type Config struct {
 	} `yaml:"mi"`
 }
 
+func printVersion(tool string) {
+	logrus.Printf("%s: %s", tool, utils.GetFullVersion());
+	os.Exit(0)
+}
 
 // read & parse configuration file
 func NewConfig(configPath string) (*Config, error) {
@@ -89,9 +94,17 @@ func ParseFlags(tool string) (string, error) {
 	var err error
 	var configPath string
 
+	versionFlag := flag.Bool("v", false, "Print the current version and exit")
 	flag.StringVar(&configPath, "config", "", "path to config file")
 
 	flag.Parse()
+
+	if *versionFlag {
+		printVersion(tool)
+	} else {
+		logrus.Error("version not set")
+	}
+
 	if (configPath == "") {
 		configPath, err = GetDefaultConfigPath(tool)
 	}

@@ -101,8 +101,6 @@ func ParseFlags(tool string) (string, error) {
 
 	if *versionFlag {
 		printVersion(tool)
-	} else {
-		logrus.Error("version not set")
 	}
 
 	if (configPath == "") {

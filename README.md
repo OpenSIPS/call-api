@@ -12,19 +12,71 @@ The Call API tool is using go modules, introduced in go 1.13, but the tool was d
 
 ## Installation
 
+### Download the sources
+
+You can either use git or go to download the Call API sources
+
+* Git
+  * go to your sources directory (such as `/usr/local/src`) and clone the repository
+
+```
+    git clone https://github.com/OpenSIPS/call-api.git
+    cd call-api
+```
+
+* Go
+  * (_optional_) set up your [`$GOPATH` variable](https://github.com/golang/go/wiki/SettingGOPATH), if not already provided:
+
 ```
     go get github.com/OpenSIPS/call-api
     cd ${GOPATH:-$HOME/go}/src/github.com/OpenSIPS/call-api
-    make build
-    bin/call-api
 ```
 
-The following steps will build all the project's tools in the `bin/` folder of the current directory.
- In order to make a complete install of the project, you can follow these steps:
+### Download dependencies
+
+```
+    go get -d ./...
+```
+
+### Manual run
+
+You can run the tools directly from the source code using the `go run` command:
+
+```
+    go run cmd/call-api/main.go
+```
+
+### Build packages
+
+The following command will build all tools and place them in the `bin/` folder of the project.
+
+```
+    make build
+```
+
+After this command you can find all the binaries in the `bin/` directory.
+
+### Install packages
+
+The following command install all tools in the `$GOBIN` directory, and all
+their configuration files in `/etc/call-api` directory. The default value of
+`$GOBIN` is `$GOPATH/bin` which defaults to `$HOME/go/bin` if not set
+otherwise by your system.
 
 ```
     make install
     export PATH=$PATH:${GOBIN:-${GOPATH:-$HOME/go}/bin}
+    call-api
+```
+
+Note that you can also use the go-flavor install `go install ./...`, but this
+will not install the configuration files.
+
+In order to install the binaries in a standard path (such as `/usr/bin`), make
+sure to overwrite the `$GOBIN` variable:
+
+```
+    GOBIN=/usr/bin make install
     call-api
 ```
 

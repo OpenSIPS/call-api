@@ -8,7 +8,26 @@ The API listens for [WebSocket](https://en.wikipedia.org/wiki/WebSocket) connect
 
 ## Requirements
 
-The Call API tool is using go modules, introduced in go 1.13, but the tool was developed based on go version 1.14. We recommend you install at least go 1.14 using your distribution's repositories, or from the official [Golang repository](https://golang.org/dl/).
+### Go version
+
+The Call API tool is using go modules, introduced in go 1.13, but the tool was
+developed based on go version 1.14. We recommend you install at least go 1.14
+using your distribution's repositories, or from the official
+[Golang repository](https://golang.org/dl/).
+
+### SIP Proxy
+
+In order to be able to start and control calls, you need to have a running SIP
+proxy instance that is able to communicate with the Call API daemon through a
+supported communication mechanisms, and that is able to perform the required
+logic. Current supported SIP proxies and their requirements are:
+
+* [OpenSIPS](https://opensips.org)
+  * [MI Datagram](https://opensips.org/docs/modules/3.1.x/mi_datagram.html)
+  * [Event Datagram](https://opensips.org/docs/modules/3.1.x/event_datagram.html)
+  * [Call OPerationS](https://opensips.org/docs/modules/3.1.x/callops.html)
+
+Please read more about each project's requirements on their website.
 
 ## Installation
 

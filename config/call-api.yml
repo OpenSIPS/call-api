@@ -16,6 +16,7 @@ ws_server:
 
 # properties for the MI communication
 mi:
+  # proxy's MI datagram listening socket
   url: 127.0.0.1:8080
 
 
@@ -25,4 +26,4 @@ log:
   #file_path: /var/log/call-api.log
 
   # possible levels: DEBUG, INFO, WARN, ERROR
-  level: DEBUG
+  level: INFO

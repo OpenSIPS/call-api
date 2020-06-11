@@ -73,6 +73,7 @@ func (ch *callHoldCmd) callHoldNotify(sub event.Subscription, notify *jsonrpc.Js
 	})
 
 	if state == "ok" && ch.caller_done && ch.callee_done {
+		ch.sub.Unsubscribe()
 		ch.cmd.NotifyEnd()
 	}
 }

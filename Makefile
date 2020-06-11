@@ -46,7 +46,7 @@ $(GOBIN)/%: cmd/%/main.go
 	go install $(LDFLAGS) $^ && mv $(GOBIN)/main $@
 
 $(CFG_BASE_DIR)/%.yml: config/%.yml $(CFG_BASE_DIR)
-	@test -e $@ || cp $< $@
+	@test -e $@ || cp $< $@ 2>/dev/null || cp $< $(HOME)/.$(notdir $@)
 
 .PHONY: clean
 clean:

@@ -140,6 +140,14 @@ func GetDefaultConfigPath(tool string) (string, error) {
 	var cfg string
 	var tested []string
 
+	// first search in $HOME/.<tool>.yml
+	home := os.Getenv("HOME")
+	cfg = fmt.Sprintf("%s/.%s.yml", home, tool)
+	err = ValidateConfigPath(cfg)
+	if err == nil {
+		return cfg, nil
+	}
+
 	for _, d := range defaultConfigDirs {
 		cfg = fmt.Sprintf("%s/%s.yml", d, tool)
 		err = ValidateConfigPath(cfg)

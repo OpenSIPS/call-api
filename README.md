@@ -79,8 +79,10 @@ After this command you can find all the binaries in the `bin/` directory.
 
 The following command install all tools in the `$GOBIN` directory, and all
 their configuration files in `/etc/call-api` directory. The default value of
-`$GOBIN` is `$GOPATH/bin` which defaults to `$HOME/go/bin` if not set
-otherwise by your system.
+`$GOBIN` is `$GOPATH/bin` which defaults to `$HOME/go/bin`. Make sure to
+properly tune your `$GOBIN` variable if you want to install your binaries in a
+different place (for example set `GOBIN=/usr/bin` to install them in
+`/usr/bin`).
 
 ```
     make install
@@ -99,6 +101,10 @@ sure to overwrite the `$GOBIN` variable:
     call-api
 ```
 
+After the install is complete, you can find the configuration files in the
+`/etc/call-api` directory if you are running as `root`, or in
+`$HOME/.<tool-name>.yml` otherwise.
+
 ## Tools
 
 The project builds and installs the following tools:
@@ -109,7 +115,12 @@ The project builds and installs the following tools:
 
 ## Configuration
 
-Each tool uses a configuration file that defaults to `tool-name.yml` (ex: `call-api.yml` or `call-cmd.yml`). This file is automatically searched in the following folders: `config/`, `/etc` and `/etc/call-api`, in this specific order. A custom path can be specified using the `-config cfg_file.yml` parameter when starting the tool (ex: `call-api -config /etc/custom-config.yml`
+Each tool uses a configuration file that defaults to `<tool-name>.yml` (ex:
+`call-api.yml` or `call-cmd.yml`). This file is automatically searched in the
+following places: `$HOME/.<tool-name>.yml`, `config/<tool-name>.yml`,
+`/etc/<tool-name>.yml` and `/etc/call-api/<tool-name>.yml`, in this specific
+order. A custom path can be specified using the `-config cfg_file.yml`
+parameter when starting the tool (ex: `call-api -config /etc/custom-config.yml`).
 
 Examples of configuration files can be found in the [config](config/) directory.
 

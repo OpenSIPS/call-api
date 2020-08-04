@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script type="application/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+    <script type="application/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script type="application/javascript" src="https://cdn.jsdelivr.net/npm/jquery-jsonrpcclient@0.7.0/jquery.jsonrpcclient.js"></script>
+    <script type="application/javascript" src="call-api.js"></script>
+    <title>Call API Javascript Example</title>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Start Call</h2>
+      <div class="input-group mb-3">
+	<div class="input-group-prepend">
+	  <span class="input-group-text" id="addon-wrapping">Caller</span>
+        </div>
+        <input type="text" class="form-control" id="caller"
+		  placeholder="Caller" value="" name="caller">
+      </div>
+      <div class="input-group mb-3">
+	<div class="input-group-prepend">
+	  <span class="input-group-text" id="addon-wrapping">Callee</span>
+        </div>
+        <input type="text" class="form-control" id="callee"
+		  placeholder="Callee" value="" name="callee">
+      </div>
+      <div class="input-group mb-3">
+        <button type="button" class="btn btn-primary btn-lg" data-toggle="modal"
+			data-target="#callModal" onclick="CallStart()">Start</button>
+      </div>
+    </div>
+    <div id="callModal" class="modal fade" role="dialog">
+    <div class="modal-dialog modal-lg">
+
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title">Ongoing Call</h4>
+	</div>
+	<div class="modal-body">
+          <dl class="row">
+            <dt class="col">Caller</dt>
+            <dd class="col" id="caller-out"\>
+          </dl>
+          <dl class="row">
+            <dt class="col">Callee</dt>
+            <dd class="col" id="callee-out"\>
+          </dl>
+          <dl class="row">
+            <dt class="col">Call-Id</dt>
+            <dd class="col" id="callid"\>
+          </dl>
+      <div class="btn-group" role="group" aria-label="Call Start">
+        <button type="button" class="btn btn-primary btn-lg invisible" onclick="CallHold()" id="callHold">Call Hold</button>
+        <button type="button" class="btn btn-danger btn-lg invisible" onclick="CallEnd()" id="callEnd">Call End</button>
+      </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  </body>
+
+  </body>
+</html>

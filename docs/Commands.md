@@ -170,7 +170,7 @@ regarding the new call
     "method": "CallStart",
     "params": {
         "cmd_id": "b8179f1e-b4e4-4ac7-9990-4bf64f084178",
-        "status": "Calling"
+        "status": "Transferring"
         "data": {
             "caller": "sip:alice@10.0.0.10",
             "callee": "sip:bob@10.0.0.11"
@@ -185,7 +185,7 @@ regarding the new call
     "method": "CallStart",
     "params": {
         "cmd_id": "b8179f1e-b4e4-4ac7-9990-4bf64f084178",
-        "status": "CallStart"
+        "status": "TransferStart"
         "data": {
             "callid": "1fc8043a-3f89-49f9-8f8c-4c284faf69e3",
             "caller": "sip:alice@10.0.0.10",
@@ -201,7 +201,24 @@ regarding the new call
     "method": "CallStart",
     "params": {
         "cmd_id": "b8179f1e-b4e4-4ac7-9990-4bf64f084178",
-        "status": "CallAnswered"
+        "status": "TransferPending"
+        "data": {
+            "callid": "1fc8043a-3f89-49f9-8f8c-4c284faf69e3",
+            "caller": "sip:alice@10.0.0.10",
+            "callee": "sip:bob@10.0.0.11",
+            "extra":"100 Trying"
+        }
+    },
+    "jsonrpc": "2.0"
+}
+
+7) WS client <---------- API
+
+{
+    "method": "CallStart",
+    "params": {
+        "cmd_id": "b8179f1e-b4e4-4ac7-9990-4bf64f084178",
+        "status": "CalleeAnswered"
         "data": {
             "callid": "1fc8043a-3f89-49f9-8f8c-4c284faf69e3",
             "caller": "sip:alice@10.0.0.10",
@@ -211,7 +228,7 @@ regarding the new call
     "jsonrpc": "2.0"
 }
 
-7) WS client <---------- API
+8) WS client <---------- API
 
 {
     "method": "CallStart",

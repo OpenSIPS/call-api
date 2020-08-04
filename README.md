@@ -133,7 +133,7 @@ Below are the API's [commands](docs/Commands.md) available for building your JSO
 * **[CallBlindTransfer](docs/Commands.md#callblindtransfer)** - perform an unattended call transfer (see [RFC 5359 example](https://tools.ietf.org/html/rfc5359#page-50))
 * **[CallAttendedTransfer](docs/Commands.md#callattendedtransfer)** - perform an attended call transfer (see [RFC 5359 example](https://tools.ietf.org/html/rfc5359#page-58))
 * **[CallHold](docs/Commands.md#callhold)** - put one or both participants on hold
-* **[CallUnHold](docs/Commands.md#callunhold)** - resume an on-hold call
+* **[CallUnhold](docs/Commands.md#callunhold)** - resume an on-hold call
 * **[CallEnd](docs/Commands.md#callend)** - terminate an ongoing call
 
 ## Interacting with the API

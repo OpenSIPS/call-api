@@ -34,7 +34,13 @@ const default_ws_host string = "localhost"
 const default_ws_port int = 5059
 const default_ws_path string = "/call-api"
 
-var upgrader = websocket.Upgrader{} // use default options
+func IgnoreCheckOrigin(r *http.Request) bool {
+	return true;
+}
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: IgnoreCheckOrigin,
+}
 var Cfg *config.Config
 
 type WSConnection struct {

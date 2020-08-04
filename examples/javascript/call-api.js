@@ -10,7 +10,8 @@ function CallStart() {
 	var callee = document.getElementById("callee").value;
 
 	$('#callModal').on('hidden.bs.modal', function () {
-		CallEnd();
+		if (callid)
+			CallEnd();
 	});
 	toastr.info("Starting Call to " + caller);
 

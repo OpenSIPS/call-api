@@ -1,4 +1,4 @@
-var callApiURL = "ws://164.90.215.149:5059/call-api";
+var callApiURL = "ws://127.0.0.1:5059/call-api";
 
 var client = new $.JsonRpcClient({socketUrl: callApiURL, onmessage: CallOnMessage });
 

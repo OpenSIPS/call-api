@@ -98,6 +98,10 @@ function CallOnMessage(message) {
 			break;
 		case "CallHolding":
 		case "CallUnholding":
+		case "CallHoldStart":
+		case "CallUnholdStart":
+		case "CallHoldSuccessful":
+		case "CallUnholdSuccessful":
 		case "Ended":
 			break;
 		default:

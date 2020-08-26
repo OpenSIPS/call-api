@@ -111,8 +111,9 @@ func (sub *EventDatagramSub) removeSubscription(ds *DatagramSubscription) {
 			break
 		}
 	}
-	// inform the loop to stop waiting for events from it
-	sub.handler.notify <- sub
+	if len(sub.subscriptions) == 0 {
+		sub.handler.removeEventSubscription(sub)
+	}
 	sub.lock.Unlock()
 	if !sub.IsSubscribed() {
 		return
@@ -138,7 +139,11 @@ func (sub *EventDatagramSub) subscribeReply(response *jsonrpc.JsonRPCResponse) {
 		sub.subscribed = true
 	} else {
 		// wake up the event loop to inform there's no one in there
-		sub.handler.notify <- sub
+		sub.lock.Lock()
+		if len(sub.subscriptions) == 0 {
+			sub.handler.removeEventSubscription(sub)
+		}
+		sub.lock.Unlock()
 	}
 	close(sub.confirm)
 }
@@ -158,7 +163,6 @@ type EventDatagram struct {
 	mi mi.MI
 	lock sync.Mutex
 	conn *net.UDPConn
-	notify chan *EventDatagramSub
 	subs []*EventDatagramSub
 }
 
@@ -168,31 +172,21 @@ func (event *EventDatagram) waitForEvents() {
 
 	buffer := make([]byte, 65535)
 	for {
-		select {
-		case sub = <-event.notify:
-			logrus.Debug("removing " + sub.String())
-			sub.lock.Lock()
-			if len(sub.subscriptions) == 0 {
-				event.removeEventSubscription(sub)
-			}
-			sub.lock.Unlock()
-		default:
-			r, _, err := event.conn.ReadFrom(buffer)
-			if err == nil {
-				result := &jsonrpc.JsonRPCNotification{}
-				err = result.Parse(buffer[0:r])
-				if err != nil {
-					logrus.Error("could not parse notification: " + err.Error())
-				} else {
-					sub = event.getEventSubscription(result.Method)
-					// run in a different routine to avoid blocking
-					if sub != nil {
-						sub.notify(result)
-					}
-				}
+		r, _, err := event.conn.ReadFrom(buffer)
+		if err == nil {
+			result := &jsonrpc.JsonRPCNotification{}
+			err = result.Parse(buffer[0:r])
+			if err != nil {
+				logrus.Error("could not parse notification: " + err.Error())
 			} else {
-				logrus.Warn("error while listening for events: " + err.Error())
+				sub = event.getEventSubscription(result.Method)
+				// run in a different routine to avoid blocking
+				if sub != nil {
+					sub.notify(result)
+				}
 			}
+		} else {
+			logrus.Warn("error while listening for events: " + err.Error())
 		}
 	}
 }
@@ -202,6 +196,8 @@ func (event *EventDatagram) getEventSubscription(ev string) (*EventDatagramSub) 
 	for _, es = range event.subs {
 		if es.event == ev {
 			break
+		} else {
+			es = nil
 		}
 	}
 	return es
@@ -257,7 +253,7 @@ func (event *EventDatagram) Init(mi mi.MI) (error) {
 	event.mi = mi
 	event.conn = udpConn
 	event.subs = make([]*EventDatagramSub, 0, 1)
-	event.notify = make(chan *EventDatagramSub, 1)
+
 	go event.waitForEvents()
 	return nil
 }

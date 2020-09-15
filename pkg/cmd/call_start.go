@@ -20,6 +20,7 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"time"
 	"github.com/OpenSIPS/call-api/pkg/event"
 	"github.com/OpenSIPS/call-api/internal/jsonrpc"
 )
@@ -168,6 +169,7 @@ func (cs *callStartCmd) callStartInitial(response *jsonrpc.JsonRPCResponse) {
 		return
 	}
 
+	time.Sleep(500 * time.Millisecond)
 	err = cs.cmd.proxy.MICall("call_transfer", &transferParams, cs.callStartTransfer)
 	if err != nil {
 		cs.sub.Unsubscribe()

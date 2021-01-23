@@ -128,7 +128,7 @@ func (sub *EventDatagramSub) removeSubscription(ds *DatagramSubscription) {
 	if err != nil {
 		logrus.Error("could not unsubscribe for event " + sub.event + " " + err.Error())
 	} else {
-		logrus.Debug("successfully unsubscrbed " + sub.event)
+		logrus.Debug("successfully unsubscribed " + sub.event)
 	}
 }
 

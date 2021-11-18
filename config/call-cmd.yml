@@ -4,6 +4,11 @@
 mi:
   url: 127.0.0.1:8080
 
+# properties for SIP communication
+sip:
+  # proxy SIP URI
+  #uri: sip:127.0.0.1
+
 # logging configuration (by default, the API logs to stderr)
 log:
   # absolute path

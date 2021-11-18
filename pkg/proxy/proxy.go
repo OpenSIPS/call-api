@@ -61,3 +61,7 @@ func (proxy *Proxy) Subscribe(event string, notify event.EventNotification) (eve
 func (proxy *Proxy) SubscribeFilter(event string, notify event.EventNotification, filter map[string]interface{}) (event.Subscription) {
 	return proxy.ev.SubscribeFilter(event, notify, filter)
 }
+
+func (proxy *Proxy) GetURI() (string) {
+	return proxy.cfg.SIP.URI
+}

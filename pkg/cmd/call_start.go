@@ -214,6 +214,10 @@ func (c *Cmd) CallStart(params map[string]interface{}) {
 		"headers": headers,
 		"body": inviteBody,
 	}
+	var next_hop = c.proxy.GetURI()
+	if next_hop != "" {
+		inviteParams["next_hop"] = next_hop
+	}
 
 	cs := &callStartCmd{
 		caller: caller,

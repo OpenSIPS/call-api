@@ -44,6 +44,10 @@ type Config struct {
 		Level string `yaml:"level",omitempty"`
 	} `yaml:"log"`
 
+	SIP struct {
+		URI string `yaml:"uri",omitempty"`
+	} `yaml:"sip"`
+
 	MI struct {
 		URL string `yaml:"url,omitempty"`
 	} `yaml:"mi"`

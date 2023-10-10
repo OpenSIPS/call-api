@@ -154,3 +154,30 @@ go run cmd/call-cmd/main.go CallStart caller=sip:alice@localhost callee=sip:bob@
 ## Documentation
 
 The [docs](docs/) folder contains the documentation for this project.
+
+## Build and run docker containers
+
+You can build and run the three tools under a docker container.
+
+```sh
+docker build -t opensips-call-api:latest .
+```
+
+By default the `call-api` will be run:
+
+```sh
+> docker run opensips-call-api:latest
+time="2023-10-10T21:42:48Z" level=info msg="Listening for JSON-RPC over WebSocket on localhost:5059/call-api ..."
+```
+
+But, you can specify the `call-cmd` and `call-api-client` tools:
+
+```sh
+docker run opensips-call-api:latest call-api-client \
+  -method CallStart \
+  -params '{"caller": "sip:alice@localhost", "callee": "sip:bob@localhost"}'
+```
+
+```bash
+docker run opensips-call-api:latest call-cmd CallStart caller=sip:alice@localhost callee=sip:bob@localhost
+```

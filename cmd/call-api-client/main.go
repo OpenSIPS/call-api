@@ -26,19 +26,20 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/OpenSIPS/call-api/internal/jsonrpc"
+	"github.com/OpenSIPS/call-api/pkg/config"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
-	"github.com/OpenSIPS/call-api/pkg/config"
-	"github.com/OpenSIPS/call-api/internal/jsonrpc"
 )
 
 func usage(prog string) {
 	logrus.Fatalf("Usage: %s jsonrpc_method [jsonrpc_arguments]", prog)
 }
 
-func ParseClientArgs() (string, string, interface{}, string) {
-	var method, params, id string
+func ParseClientArgs() (string, string, string, interface{}, string) {
+	var wsServer, method, params, id string
 
+	flag.StringVar(&wsServer, "wsserver", "localhost", "The API host to connect to")
 	flag.StringVar(&method, "method", "", "JSON-RPC method")
 	flag.StringVar(&params, "params", "", "JSON-RPC params")
 	flag.StringVar(&id, "id", "", "JSON-RPC id")
@@ -62,7 +63,7 @@ func ParseClientArgs() (string, string, interface{}, string) {
 		}
 	}
 
-	return cfgPath, method, v, id
+	return wsServer, cfgPath, method, v, id
 }
 
 func closeWSConnection(c *websocket.Conn) {
@@ -79,7 +80,7 @@ func closeWSConnection(c *websocket.Conn) {
 
 func main() {
 	// parse cmdline args
-	cfgPath, method, params, id := ParseClientArgs()
+	wsServer, cfgPath, method, params, id := ParseClientArgs()
 
 	// read configuration
 	cfg, err := config.NewConfig(cfgPath)
@@ -99,7 +100,7 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	api_hostport := fmt.Sprintf("%s:%d", cfg.WSServer.Host, cfg.WSServer.Port)
+	api_hostport := fmt.Sprintf("%s:%d", wsServer, cfg.WSServer.Port)
 	u := url.URL{Scheme: "ws", Host: api_hostport, Path: cfg.WSServer.Path}
 	logrus.Printf("connecting to %s", u.String())
 

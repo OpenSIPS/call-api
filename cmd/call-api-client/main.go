@@ -36,10 +36,12 @@ func usage(prog string) {
 	logrus.Fatalf("Usage: %s jsonrpc_method [jsonrpc_arguments]", prog)
 }
 
-func ParseClientArgs() (string, string, string, interface{}, string) {
+func ParseClientArgs() (string, int, string, string, interface{}, string) {
 	var wsServer, method, params, id string
+	var wsPort int
 
-	flag.StringVar(&wsServer, "wsserver", "localhost", "The API host to connect to")
+	flag.StringVar(&wsServer, "wshost", "", "The websocket host to connect to")
+	flag.IntVar(&wsPort, "wsport", 0, "The websocket port to connect to")
 	flag.StringVar(&method, "method", "", "JSON-RPC method")
 	flag.StringVar(&params, "params", "", "JSON-RPC params")
 	flag.StringVar(&id, "id", "", "JSON-RPC id")
@@ -63,7 +65,7 @@ func ParseClientArgs() (string, string, string, interface{}, string) {
 		}
 	}
 
-	return wsServer, cfgPath, method, v, id
+	return wsServer, wsPort, cfgPath, method, v, id
 }
 
 func closeWSConnection(c *websocket.Conn) {
@@ -80,12 +82,20 @@ func closeWSConnection(c *websocket.Conn) {
 
 func main() {
 	// parse cmdline args
-	wsServer, cfgPath, method, params, id := ParseClientArgs()
+	wsServer, wsPort, cfgPath, method, params, id := ParseClientArgs()
 
 	// read configuration
 	cfg, err := config.NewConfig(cfgPath)
 	if err != nil {
 		logrus.Fatal(err)
+	}
+
+	if wsServer == "" {
+		wsServer = cfg.WSServer.Host
+	}
+
+	if wsPort == 0 {
+		wsPort = cfg.WSServer.Port
 	}
 
 	// prepare logging
@@ -100,7 +110,7 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	api_hostport := fmt.Sprintf("%s:%d", wsServer, cfg.WSServer.Port)
+	api_hostport := fmt.Sprintf("%s:%d", wsServer, wsPort)
 	u := url.URL{Scheme: "ws", Host: api_hostport, Path: cfg.WSServer.Path}
 	logrus.Printf("connecting to %s", u.String())
 
@@ -129,7 +139,7 @@ func main() {
 
 			err = json.Unmarshal(message, &v)
 			if err != nil {
-				logrus.Println("failed to parse JSON reply: %s", err)
+				logrus.Printf("failed to parse JSON reply: %s", err)
 				return
 			}
 

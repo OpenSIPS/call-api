@@ -1,5 +1,5 @@
 # Use the official Golang image as the base image
-FROM golang:1.14
+FROM golang:1.25-trixie
 
 # Set the working directory
 WORKDIR /go/src/app
@@ -7,7 +7,7 @@ WORKDIR /go/src/app
 COPY go.mod go.sum ./
 
 # Download dependencies using Go modules
-RUN go get -d ./...
+RUN go mod download
 
 COPY . .
 
